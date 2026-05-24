@@ -79,13 +79,15 @@ function ProjectRow({ project, selected, onToggleDir, onToggleProject, onReveal 
   const sourceMeta = SOURCE_META[project.source];
 
   if (project.cleanables.length === 0) {
-    // 无可清理目录的项目，仍然显示但弱化
+    // 无可清理目录：不再整体灰化，保持与其他项目同等可见度
     return (
       <div className="project-row empty-row">
         <div className="project-head">
+          <span className="cell-placeholder" aria-hidden />
+          <span className="cell-placeholder" aria-hidden />
           <div className="project-info">
             <div className="project-name-row">
-              <span className="project-name muted">{project.name}</span>
+              <span className="project-name">{project.name}</span>
               <span className={`tag ${sourceMeta.cls}`} title={sourceMeta.title}>
                 {sourceMeta.label}
               </span>
@@ -96,16 +98,19 @@ function ProjectRow({ project, selected, onToggleDir, onToggleProject, onReveal 
               ))}
             </div>
             {project.description && (
-              <div className="project-desc muted" title={project.description}>
+              <div className="project-desc" title={project.description}>
                 {project.description}
               </div>
             )}
             <div className="project-sub">
-              <span className="path muted" onClick={() => onReveal(project.path)}>
+              <span className="path" title={project.path} onClick={() => onReveal(project.path)}>
                 {shortenPath(project.path, 70)}
               </span>
-              <span className="muted">· 无可清理目录</span>
+              <span className="muted">· {formatRelative(project.lastModified)}</span>
             </div>
+          </div>
+          <div className="project-size">
+            <span className="clean-badge" title="未发现可清理目录">已整洁</span>
           </div>
         </div>
       </div>
@@ -113,7 +118,7 @@ function ProjectRow({ project, selected, onToggleDir, onToggleProject, onReveal 
   }
 
   return (
-    <div className={`project-row ${expanded ? 'expanded' : ''}`}>
+    <div className={`project-row has-cleanable ${expanded ? 'expanded' : ''}`}>
       <div className="project-head">
         <input
           type="checkbox"
@@ -132,6 +137,7 @@ function ProjectRow({ project, selected, onToggleDir, onToggleProject, onReveal 
         </button>
         <div className="project-info">
           <div className="project-name-row">
+            <span className="cleanable-dot" title="存在可清理目录" aria-hidden />
             <span className="project-name">{project.name}</span>
             <span className={`tag ${sourceMeta.cls}`} title={sourceMeta.title}>
               {sourceMeta.label}
