@@ -10,7 +10,7 @@ import type {
   RemoteProvider,
   ScanProgress
 } from '@shared/types';
-import { ECOSYSTEMS, SKIP_DIRS, SYSTEM_SKIP_DIRS } from './markers.js';
+import { ECOSYSTEMS, SKIP_DIRS, SYSTEM_SKIP_DIRS, ANDROID_PLUGIN_RE } from './markers.js';
 
 const execAsync = promisify(exec);
 
@@ -93,12 +93,14 @@ export async function scanProjects(
 
 /** 在给定目录中识别命中的生态列表 */
 async function detectEcosystems(
-  _dir: string,
+  dir: string,
   entries: import('node:fs').Dirent[]
 ): Promise<EcosystemId[]> {
   const names = entries.map((e) => e.name);
   const hit: EcosystemId[] = [];
   for (const spec of ECOSYSTEMS) {
+    // android 不参与 marker 自动匹配，由下方内容嗅探单独处理
+    if (spec.id === 'android') continue;
     const matched = spec.markers.some((m) => {
       if (m.startsWith('*.')) {
         const ext = m.slice(1); // ".xcodeproj"
@@ -108,7 +110,56 @@ async function detectEcosystems(
     });
     if (matched) hit.push(spec.id);
   }
+  // Android 嗅探：仅当 java-gradle 命中时才进一步检查 build.gradle* 是否包含 com.android.* 插件，
+  // 命中后用 android 取代 java-gradle，避免双标签
+  if (hit.includes('java-gradle') && (await detectAndroid(dir, entries))) {
+    const idx = hit.indexOf('java-gradle');
+    if (idx >= 0) hit.splice(idx, 1);
+    hit.push('android');
+  }
   return hit;
+}
+
+/**
+ * 判定一个 Gradle 项目是否是 Android 项目：
+ * 读取项目根目录和一级子模块下的 build.gradle / build.gradle.kts，
+ * 查找 com.android.* 插件声明。
+ */
+async function detectAndroid(
+  dir: string,
+  entries: import('node:fs').Dirent[]
+): Promise<boolean> {
+  const files: string[] = [];
+  for (const e of entries) {
+    if (e.isFile() && /^build\.gradle(\.kts)?$/.test(e.name)) {
+      files.push(path.join(dir, e.name));
+    }
+  }
+  for (const e of entries) {
+    if (!e.isDirectory()) continue;
+    if (e.name.startsWith('.')) continue;
+    if (SKIP_DIRS.has(e.name)) continue;
+    let subEntries: import('node:fs').Dirent[];
+    try {
+      subEntries = await fs.readdir(path.join(dir, e.name), { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const se of subEntries) {
+      if (se.isFile() && /^build\.gradle(\.kts)?$/.test(se.name)) {
+        files.push(path.join(dir, e.name, se.name));
+      }
+    }
+  }
+  for (const f of files) {
+    try {
+      const content = await fs.readFile(f, 'utf8');
+      if (ANDROID_PLUGIN_RE.test(content)) return true;
+    } catch {
+      // ignore
+    }
+  }
+  return false;
 }
 
 /** 组装一个项目的完整信息 */
@@ -172,7 +223,61 @@ async function collectCleanables(
       }
     }
   }
+  // Android：典型多模块结构，子模块 build/ 是最大头，额外递归收集一级子模块下的 build/ 与 .cxx/
+  if (ecosystems.includes('android')) {
+    await collectAndroidModuleArtifacts(projectDir, seen);
+  }
   return Array.from(seen.values()).sort((a, b) => b.size - a.size);
+}
+
+/** 收集 Android 一级子模块下的 build/ 与 .cxx/ 目录（仅当子目录包含 build.gradle* 时视为模块） */
+async function collectAndroidModuleArtifacts(
+  projectDir: string,
+  seen: Map<string, CleanableDir>
+): Promise<void> {
+  let entries: import('node:fs').Dirent[];
+  try {
+    entries = await fs.readdir(projectDir, { withFileTypes: true });
+  } catch {
+    return;
+  }
+  for (const e of entries) {
+    if (!e.isDirectory()) continue;
+    if (e.name.startsWith('.')) continue;
+    if (SKIP_DIRS.has(e.name)) continue;
+    const moduleDir = path.join(projectDir, e.name);
+    let subFiles: import('node:fs').Dirent[];
+    try {
+      subFiles = await fs.readdir(moduleDir, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    const isModule = subFiles.some(
+      (f) => f.isFile() && /^build\.gradle(\.kts)?$/.test(f.name)
+    );
+    if (!isModule) continue;
+    for (const dirName of ['build', '.cxx'] as const) {
+      const target = path.join(moduleDir, dirName);
+      if (seen.has(target)) continue;
+      try {
+        const st = await fs.stat(target);
+        if (!st.isDirectory()) continue;
+        const size = await dirSize(target);
+        seen.set(target, {
+          path: target,
+          name: dirName,
+          size,
+          ecosystem: 'android',
+          hint:
+            dirName === '.cxx'
+              ? 'Android NDK 构建产物，可重建'
+              : 'Android 模块构建产物，gradle assemble 可重建'
+        });
+      } catch {
+        // 目录不存在
+      }
+    }
+  }
 }
 
 /** 递归计算目录字节数。失败返回已累计值。 */

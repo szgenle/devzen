@@ -12,6 +12,7 @@ export type EcosystemId =
   | 'java-gradle'
   | 'apple-xcode'
   | 'apple-spm'
+  | 'android'
   | 'unknown';
 
 /** 一个可清理的目录 */

@@ -83,8 +83,23 @@ export const ECOSYSTEMS: EcosystemSpec[] = [
     id: 'apple-spm',
     markers: ['Package.swift'],
     cleanableDirs: [{ name: '.build', hint: 'SwiftPM 构建产物，swift build 可重建' }]
+  },
+  {
+    id: 'android',
+    // 与 Gradle 标记相同；scanner 通过内容嗅探 com.android.* 插件进一步区分。
+    // 这里的 markers 仅用于 lastModified 取 mtime；命中判定不依赖 markers 自动匹配。
+    markers: ['build.gradle', 'build.gradle.kts', 'settings.gradle', 'settings.gradle.kts'],
+    cleanableDirs: [
+      { name: 'build', hint: 'Android 根项目构建产物，gradle clean 可重建' },
+      { name: '.gradle', hint: 'Gradle 项目缓存' },
+      { name: '.cxx', hint: 'Android NDK 构建产物，可重建' }
+    ]
   }
 ];
+
+/** Android Gradle 插件正则，用于嗅探 build.gradle / build.gradle.kts 内容 */
+export const ANDROID_PLUGIN_RE =
+  /com\.android\.(application|library|dynamic-feature|test|asset-pack)/;
 
 /** 不应进入扫描的目录名（性能与安全） */
 export const SKIP_DIRS = new Set<string>([

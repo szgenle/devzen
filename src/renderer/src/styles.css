@@ -779,6 +779,9 @@ button.ghost-btn:hover:not(:disabled) {
   align-items: center;
   gap: 10px;
   padding: 10px 16px;
+  /* 拖拽刷选时不选中文字，并给出可批量操作的鼠标暗示 */
+  user-select: none;
+  cursor: default;
 }
 .cleanup-head input[type='checkbox'] {
   width: 14px;
@@ -996,6 +999,7 @@ button.ghost-btn:hover:not(:disabled) {
 .tag-python { color: #ffd43b; }
 .tag-java-maven, .tag-java-gradle { color: #f89820; }
 .tag-apple-xcode, .tag-apple-spm { color: #f0f0f0; }
+.tag-android { color: #3ddc84; }
 .tag-git { color: #f1502f; }
 .tag-source-github {
   color: #c9d1d9;
@@ -1065,6 +1069,8 @@ button.ghost-btn:hover:not(:disabled) {
   align-items: center;
   padding: 4px 0;
   font-size: 12px;
+  /* 拖拽刷选时禁选文本，避免出现蓝色高亮条 */
+  user-select: none;
 }
 .cleanable-name {
   font-family: 'SF Mono', Menlo, Consolas, monospace;

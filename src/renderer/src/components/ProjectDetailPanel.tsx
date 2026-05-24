@@ -46,7 +46,8 @@ const ECO_LABELS: Record<string, string> = {
   'java-maven': 'Maven',
   'java-gradle': 'Gradle',
   'apple-xcode': 'Xcode',
-  'apple-spm': 'SwiftPM'
+  'apple-spm': 'SwiftPM',
+  android: 'Android'
 };
 
 /**

@@ -56,7 +56,8 @@ async function cleanOne(target: string): Promise<CleanResult> {
     '.ruff_cache',
     '.gradle',
     'DerivedData',
-    '.build'
+    '.build',
+    '.cxx'
   ]);
   if (!ALLOWED_NAMES.has(path.basename(target))) {
     return {
