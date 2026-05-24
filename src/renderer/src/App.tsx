@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { CleanResult, ProjectInfo, ScanProgress } from '@shared/types';
 import { ProjectList } from './components/ProjectList';
+import { ProjectDetailPanel } from './components/ProjectDetailPanel';
 import { HomeScreen } from './components/HomeScreen';
 import { ScanScreen } from './components/ScanScreen';
 import { ResultsHeader } from './components/ResultsHeader';
@@ -13,6 +14,15 @@ import {
   removeHistoryEntry,
   type HistoryEntry
 } from './utils/storage';
+import {
+  loadStore,
+  assignCategory,
+  unassignCategory,
+  addCustomCategory,
+  removeCustomCategory,
+  type Category,
+  type CategoryStore
+} from './utils/categories';
 
 type View = 'home' | 'scanning' | 'results';
 
@@ -29,6 +39,10 @@ export function App() {
   const [scannedAt, setScannedAt] = useState<number | null>(null);
   // 扫描历史列表：首页以列表形式呈现，用户自己决定查看或重扫
   const [history, setHistory] = useState<HistoryEntry[]>([]);
+  // 项目分类存档（内置分类 + 自定义分类 + 项目分配）
+  const [categoryStore, setCategoryStore] = useState<CategoryStore>(() => loadStore());
+  // 当前打开详情侧边栏的项目；null 表示未打开
+  const [detailProject, setDetailProject] = useState<ProjectInfo | null>(null);
 
   // 启动时加载历史与默认主目录，但保持在首页：
   // 清理是低频操作，没必要每次进入都自动扫描。
@@ -117,7 +131,39 @@ export function App() {
     setSelected(new Set());
     setProgress(null);
     setLastResults(null);
+    setDetailProject(null);
   }, []);
+
+  // ---------------- 分类管理 ----------------
+  const handleAssignCategory = useCallback((p: ProjectInfo, categoryId: string) => {
+    setCategoryStore((prev) => assignCategory(p.path, categoryId, prev));
+  }, []);
+
+  const handleUnassignCategory = useCallback((p: ProjectInfo) => {
+    setCategoryStore((prev) => unassignCategory(p.path, prev));
+  }, []);
+
+  const handleAddCategory = useCallback((name: string): Category => {
+    let created: Category | null = null;
+    setCategoryStore((prev) => {
+      const { store, category } = addCustomCategory(name, prev);
+      created = category;
+      return store;
+    });
+    // setState 同步调用 updater，addCustomCategory 一定会赋值 created
+    return created as unknown as Category;
+  }, []);
+
+  const handleRemoveCategory = useCallback((id: string) => {
+    setCategoryStore((prev) => removeCustomCategory(id, prev));
+  }, []);
+
+  // 详情面板要展示的是当前 projects 列表里的最新数据，
+  // 防止外部状态变更后面板里还指着旧引用。
+  const detailLatest = useMemo<ProjectInfo | null>(() => {
+    if (!detailProject) return null;
+    return projects.find((p) => p.path === detailProject.path) ?? detailProject;
+  }, [detailProject, projects]);
 
   const totalCleanable = useMemo(
     () => projects.reduce((s, p) => s + p.cleanableSize, 0),
@@ -228,9 +274,11 @@ export function App() {
             <ProjectList
               projects={projects}
               selected={selected}
+              categoryStore={categoryStore}
               onToggleDir={toggleDir}
               onToggleProject={toggleProject}
               onReveal={(p) => window.devzen.revealInFinder(p)}
+              onSelectProject={(p) => setDetailProject(p)}
             />
           </main>
 
@@ -246,6 +294,17 @@ export function App() {
           />
         </>
       )}
+
+      <ProjectDetailPanel
+        project={detailLatest}
+        categoryStore={categoryStore}
+        onClose={() => setDetailProject(null)}
+        onAssignCategory={handleAssignCategory}
+        onUnassignCategory={handleUnassignCategory}
+        onAddCategory={handleAddCategory}
+        onRemoveCategory={handleRemoveCategory}
+        onReveal={(p) => window.devzen.revealInFinder(p)}
+      />
 
       {confirmOpen && (
         <ConfirmDialog

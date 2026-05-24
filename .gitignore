@@ -7,6 +7,9 @@ dist/
 dist-electron/
 .vite/
 
+# TypeScript incremental build cache
+*.tsbuildinfo
+
 # Editor / OS
 .DS_Store
 .idea/
