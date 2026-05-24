@@ -661,12 +661,28 @@ export async function readTotalSize(dir: string): Promise<number> {
   return total;
 }
 
+/** 获取当前所在分支名 */
+export async function readCurrentBranch(dir: string): Promise<string | null> {
+  try {
+    const { stdout } = await execAsync('git rev-parse --abbrev-ref HEAD', {
+      cwd: dir,
+      timeout: 3000
+    });
+    const branch = stdout.trim();
+    // detached HEAD 时返回 "HEAD"
+    return branch && branch !== 'HEAD' ? branch : null;
+  } catch {
+    return null;
+  }
+}
+
 /** 获取项目详细信息（用于重复对比视图的按需加载） */
 export async function getProjectDetail(projectPath: string): Promise<ProjectDetail> {
-  const [lastCommitTime, unpushedCount, totalSize] = await Promise.all([
+  const [lastCommitTime, unpushedCount, totalSize, branch] = await Promise.all([
     readLastCommitTime(projectPath),
     readUnpushedCount(projectPath),
-    readTotalSize(projectPath)
+    readTotalSize(projectPath),
+    readCurrentBranch(projectPath)
   ]);
-  return { path: projectPath, lastCommitTime, unpushedCount, totalSize };
+  return { path: projectPath, lastCommitTime, unpushedCount, totalSize, branch };
 }

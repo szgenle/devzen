@@ -168,6 +168,8 @@ const zh: Record<string, string> = {
   duplicateSuggestionFreeable: '归档其余副本可释放约 {size} 磁盘空间',
   duplicateSuggestionAllSynced: '所有副本均已同步远程，可放心归档任意旧副本',
   duplicateSuggestionDirtyWarn: '「{name}」有未提交修改，请先处理后再归档',
+  duplicateSuggestionDiffBranch: '各副本位于不同分支，可能为有意保留，请谨慎归档',
+  duplicateColBranch: '当前分支',
   duplicateClose: '关闭',
 
   // --- 来源标签 ---
@@ -381,6 +383,8 @@ const en: Record<string, string> = {
   duplicateSuggestionFreeable: 'Archiving other copies can free up ~{size} of disk space',
   duplicateSuggestionAllSynced: 'All copies are synced with remote — safe to archive any older copy',
   duplicateSuggestionDirtyWarn: '"{name}" has uncommitted changes — handle before archiving',
+  duplicateSuggestionDiffBranch: 'Copies are on different branches — likely intentional, archive with caution',
+  duplicateColBranch: 'Branch',
   duplicateClose: 'Close',
 
   providerGithub: 'From GitHub, can re-clone',

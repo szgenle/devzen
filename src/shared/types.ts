@@ -150,6 +150,8 @@ export interface ProjectDetail {
   unpushedCount: number;
   /** 项目总大小（字节），不含 .git 目录 */
   totalSize: number;
+  /** 当前所在分支名；非 git 仓库或 detached HEAD 为 null */
+  branch: string | null;
 }
 
 /** 项目脏状态详情，用于归档前置确认 */

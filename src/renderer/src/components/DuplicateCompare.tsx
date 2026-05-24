@@ -68,6 +68,7 @@ export function DuplicateCompare({ projects, t, onClose, onReveal, onArchive }: 
                 <thead>
                   <tr>
                     <th>{t.duplicateColPath}</th>
+                    <th>{t.duplicateColBranch}</th>
                     <th>{t.duplicateColLastCommit}</th>
                     <th>{t.duplicateColLastModified}</th>
                     <th>{t.duplicateColUnpushed}</th>
@@ -84,6 +85,9 @@ export function DuplicateCompare({ projects, t, onClose, onReveal, onArchive }: 
                       <tr key={p.path}>
                         <td className="duplicate-cell-path" title={p.path}>
                           {shortenPath(p.path, 50)}
+                        </td>
+                        <td className="duplicate-cell-branch">
+                          {d?.branch ? <code>{d.branch}</code> : <span className="muted">—</span>}
                         </td>
                         <td>
                           {d?.lastCommitTime
@@ -151,6 +155,19 @@ function generateSuggestions(
   const suggestions: string[] = [];
   if (details.size === 0) return suggestions;
 
+  // 0. 分支感知：检测各副本是否位于不同分支
+  const branches = new Set<string>();
+  for (const p of projects) {
+    const d = details.get(p.path);
+    if (d?.branch) branches.add(d.branch);
+  }
+  const hasDifferentBranches = branches.size >= 2;
+
+  // 如果分支不同，优先提示并抑制归档建议
+  if (hasDifferentBranches) {
+    suggestions.push(t.duplicateSuggestionDiffBranch);
+  }
+
   // 1. 未提交修改警告
   for (const p of projects) {
     if (p.gitDirty) {
@@ -170,6 +187,11 @@ function generateSuggestions(
           .replace('{count}', String(d.unpushedCount))
       );
     }
+  }
+
+  // 如果分支不同，跳过保留/归档建议（有意保留场景）
+  if (hasDifferentBranches) {
+    return suggestions;
   }
 
   // 3. 推荐保留最新副本
@@ -201,7 +223,6 @@ function generateSuggestions(
     // 5. 如果最新副本已全部同步，生成安全归档建议
     const newestDetail = newest.detail!;
     if (newestDetail.unpushedCount === 0 && !newest.project.gitDirty) {
-      // 检查所有副本是否都已同步
       const allSynced = projects.every((p) => {
         const d = details.get(p.path);
         return d ? d.unpushedCount === 0 : true;
@@ -209,7 +230,6 @@ function generateSuggestions(
       if (allSynced) {
         suggestions.push(t.duplicateSuggestionAllSynced);
       } else {
-        // 只针对 2 个副本的简化建议
         const others = withCommitTime.slice(1);
         for (const other of others) {
           if (
@@ -238,7 +258,6 @@ function generateSuggestions(
           .replace('{time}', formatRelative(sorted[0].lastModified!, t._lang as 'zh' | 'en'))
       );
     }
-    // 计算可释放空间
     const freeableSize = sorted
       .slice(1)
       .reduce((sum, p) => sum + (details.get(p.path)?.totalSize ?? 0), 0);
