@@ -11,11 +11,28 @@ export function formatBytes(bytes: number): string {
   return `${v.toFixed(v >= 100 || i === 0 ? 0 : v >= 10 ? 1 : 2)} ${units[i]}`;
 }
 
-/** 时间戳 → "n 天前" / "刚刚" */
-export function formatRelative(ts: number | null): string {
+/** 时间戳 → "n 天前" / "刚刚"，支持中英文 */
+export function formatRelative(ts: number | null, lang: 'zh' | 'en' = 'zh'): string {
   if (!ts) return '-';
   const diff = Date.now() - ts;
   const day = 24 * 3600 * 1000;
+
+  if (lang === 'en') {
+    if (diff < 60 * 1000) return 'just now';
+    if (diff < 3600 * 1000) return `${Math.floor(diff / 60000)} min ago`;
+    if (diff < day) return `${Math.floor(diff / 3600000)} hr ago`;
+    if (diff < 30 * day) {
+      const d = Math.floor(diff / day);
+      return `${d} day${d > 1 ? 's' : ''} ago`;
+    }
+    if (diff < 365 * day) {
+      const m = Math.floor(diff / (30 * day));
+      return `${m} month${m > 1 ? 's' : ''} ago`;
+    }
+    const y = Math.floor(diff / (365 * day));
+    return `${y} year${y > 1 ? 's' : ''} ago`;
+  }
+
   if (diff < 60 * 1000) return '刚刚';
   if (diff < 3600 * 1000) return `${Math.floor(diff / 60000)} 分钟前`;
   if (diff < day) return `${Math.floor(diff / 3600000)} 小时前`;

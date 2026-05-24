@@ -232,7 +232,7 @@ export function ProjectDetailPanel({
             </dd>
 
             <dt>{t.detailLastModified}</dt>
-            <dd>{formatRelative(project.lastModified)}</dd>
+            <dd>{formatRelative(project.lastModified, t._lang as 'zh' | 'en')}</dd>
 
             {project.gitDirty != null && (
               <>

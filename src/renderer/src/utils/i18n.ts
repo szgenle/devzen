@@ -5,6 +5,8 @@
 import type { Lang } from './preferences';
 
 const zh: Record<string, string> = {
+  // --- 内部标记 ---
+  _lang: 'zh',
   // --- 通用 ---
   appName: 'DevZen',
   settings: '首选项',
@@ -136,6 +138,7 @@ const zh: Record<string, string> = {
 };
 
 const en: Record<string, string> = {
+  _lang: 'en',
   appName: 'DevZen',
   settings: 'Preferences',
   back: 'Back',

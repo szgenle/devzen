@@ -168,7 +168,7 @@ function OverviewRow({ project, t, onReveal, onSelect }: RowProps) {
             {shortenPath(project.path, 70)}
           </span>
           {project.lastModified && (
-            <span>· {formatRelative(project.lastModified)}</span>
+            <span>· {formatRelative(project.lastModified, t._lang as 'zh' | 'en')}</span>
           )}
         </div>
       </div>
@@ -222,7 +222,7 @@ function OverviewCard({ project, t, onReveal, onSelect }: RowProps) {
           {shortenPath(project.path, 40)}
         </span>
         {project.lastModified && (
-          <span className="overview-card-time">{formatRelative(project.lastModified)}</span>
+          <span className="overview-card-time">{formatRelative(project.lastModified, t._lang as 'zh' | 'en')}</span>
         )}
       </div>
     </div>

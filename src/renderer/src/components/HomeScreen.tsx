@@ -72,7 +72,7 @@ export function HomeScreen({
                   </div>
                   <div className="history-item-meta muted">
                     {entry.projects.length} {t.overviewProjectCount} · {t.cleanable} {formatBytes(totalCleanable)} ·
-                    {t.scannedAtPrefix} {formatRelative(entry.scannedAt)}
+                    {t.scannedAtPrefix} {formatRelative(entry.scannedAt, t._lang as 'zh' | 'en')}
                   </div>
                 </div>
                 <div className="history-item-actions" onClick={(e) => e.stopPropagation()}>

@@ -87,7 +87,7 @@ export function ResultsHeader({
         </span>
         {scannedAt && (
           <span className="scanned-at" title={new Date(scannedAt).toLocaleString()}>
-            {formatRelative(scannedAt)}
+            {formatRelative(scannedAt, t._lang as 'zh' | 'en')}
           </span>
         )}
         <button onClick={onRescan} disabled={cleaning} title={t.rescanTitle}>
