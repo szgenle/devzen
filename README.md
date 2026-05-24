@@ -12,7 +12,13 @@
 
 ## 🖥 平台支持
 
-当前仅支持 **macOS**。原因：项目内大量使用 macOS LaunchServices（`open -a`）启动编辑器/终端、Finder 集成等。Windows / Linux 暂不在 MVP 范围内，欢迎 PR。
+当前 v0.1.x 仅支持 **macOS**。约 80% 的代码（扫描 / 清理 / 归档 / 重复检测 / Reveal）已经跨平台，真正与 macOS 强绑定的只有"编辑器/终端启动"逻辑（用了 LaunchServices `open -a`）。
+
+- ✅ macOS：稳定
+- 🛣 **Windows：已列入 v0.2.0 路线图**（适配启动逻辑、补充系统目录排除规则）
+- 🤔 Linux：视社区需求评估，欢迎 Issue 反馈使用场景
+
+如果你在 Windows 上有具体使用场景，请到 [Issues](https://github.com/szgenle/devzen/issues) 留言，会直接影响 v0.2.0 优先级排期。
 
 ## ✨ 当前 MVP
 
@@ -76,6 +82,7 @@ src/
 - [x] 项目分类与标签：个人 / 公司 / 开源 clone
 - [x] 重复项目检测：识别同一仓库的多份副本，对比辅助决策
 - [x] 快速启动入口：一键用编辑器/终端打开项目
+- [ ] **v0.2.0：Windows 支持**（编辑器/终端启动适配、系统目录排除规则补充、CI 加 windows-latest 矩阵）
 
 ## 🔒 安全策略
 

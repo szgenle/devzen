@@ -12,7 +12,13 @@ See first, then act. DevZen isn't just another "cleanup tool" — it's an invent
 
 ## 🖥 Platform Support
 
-Currently **macOS only**. The app relies heavily on macOS LaunchServices (`open -a`) to launch editors/terminals and integrates with Finder. Windows / Linux are out of scope for the MVP — PRs welcome.
+v0.1.x is **macOS only**. Roughly 80% of the code (scan / clean / archive / dedupe / reveal) is already cross-platform — the only macOS-specific part is the editor/terminal launcher (built on LaunchServices `open -a`).
+
+- ✅ macOS: stable
+- 🛣 **Windows: planned for v0.2.0** (port the launcher, expand system-folder exclusion rules)
+- 🤔 Linux: depends on community demand — feel free to open an issue with your use case
+
+If you have a concrete Windows use case, drop a note in [Issues](https://github.com/szgenle/devzen/issues) — it directly shapes the v0.2.0 priority list.
 
 ## ✨ Current MVP
 
@@ -76,6 +82,7 @@ src/
 - [x] Project categories & tags: personal / work / open-source clone
 - [x] Duplicate detection: find multiple copies of the same repo, side-by-side compare
 - [x] Quick launch: open project in your editor / terminal in one click
+- [ ] **v0.2.0: Windows support** (port the launcher, expand system-folder exclusion, add `windows-latest` to CI matrix)
 
 ## 🔒 Safety Policy
 
