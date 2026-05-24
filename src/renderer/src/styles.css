@@ -293,6 +293,8 @@ button.ghost-btn:hover:not(:disabled) {
 .results-header-center {
   display: flex;
   justify-content: center;
+  align-items: baseline;
+  gap: 6px;
   min-width: 0;
 }
 .back-btn {
@@ -315,6 +317,11 @@ button.ghost-btn:hover:not(:disabled) {
   border: 1px solid var(--border);
   padding: 3px 10px;
   border-radius: 999px;
+}
+.scanned-at {
+  color: var(--text-muted);
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 /* ---------------- Main ---------------- */
