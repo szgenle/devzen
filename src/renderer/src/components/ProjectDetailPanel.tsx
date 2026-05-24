@@ -7,10 +7,12 @@ import {
   getAllCategories,
   getProjectCategoryId
 } from '../utils/categories';
+import type { Messages } from '../utils/i18n';
 
 interface Props {
   project: ProjectInfo | null;
   categoryStore: CategoryStore;
+  t: Messages;
   onClose: () => void;
   onAssignCategory: (project: ProjectInfo, categoryId: string) => void;
   onUnassignCategory: (project: ProjectInfo) => void;
@@ -19,18 +21,16 @@ interface Props {
   onReveal: (path: string) => void;
 }
 
-/** 每个远程提供商的显示信息 */
-const PROVIDER_META: Record<RemoteProvider, { label: string; title: string }> = {
-  github: { label: 'GitHub', title: '来自 GitHub，可重新 clone' },
-  gitlab: { label: 'GitLab', title: '来自 GitLab，可重新 clone' },
-  bitbucket: { label: 'Bitbucket', title: '来自 Bitbucket，可重新 clone' },
-  gitee: { label: 'Gitee', title: '来自 Gitee，可重新 clone' },
-  codeup: { label: 'Codeup', title: '来自阿里云 Codeup，可重新 clone' },
-  coding: { label: 'Coding', title: '来自腾讯云 Coding，可重新 clone' },
-  unknown: { label: '远程仓库', title: '有远程备份' }
+/** 每个远程提供商的 i18n key 映射 */
+const PROVIDER_KEYS: Record<RemoteProvider, { label: string; titleKey: string }> = {
+  github: { label: 'GitHub', titleKey: 'providerGithub' },
+  gitlab: { label: 'GitLab', titleKey: 'providerGitlab' },
+  bitbucket: { label: 'Bitbucket', titleKey: 'providerBitbucket' },
+  gitee: { label: 'Gitee', titleKey: 'providerGitee' },
+  codeup: { label: 'Codeup', titleKey: 'providerCodeup' },
+  coding: { label: 'Coding', titleKey: 'providerCoding' },
+  unknown: { label: '', titleKey: 'providerUnknown' }
 };
-
-const LOCAL_META = { label: '仅本地', title: '没有远程备份，删了就没了' };
 
 const ECO_LABELS: Record<string, string> = {
   node: 'Node',
@@ -40,8 +40,7 @@ const ECO_LABELS: Record<string, string> = {
   'java-maven': 'Maven',
   'java-gradle': 'Gradle',
   'apple-xcode': 'Xcode',
-  'apple-spm': 'SwiftPM',
-  unknown: '未知'
+  'apple-spm': 'SwiftPM'
 };
 
 /**
@@ -56,6 +55,7 @@ const ECO_LABELS: Record<string, string> = {
 export function ProjectDetailPanel({
   project,
   categoryStore,
+  t,
   onClose,
   onAssignCategory,
   onUnassignCategory,
@@ -103,7 +103,7 @@ export function ProjectDetailPanel({
   return (
     <>
       <div className="detail-mask" onClick={onClose} aria-hidden />
-      <aside className="detail-panel" role="dialog" aria-label="项目详情">
+      <aside className="detail-panel" role="dialog" aria-label={t.detailProjectInfo}>
         <header className="detail-head">
           <div className="detail-title-row">
             <h2 className="detail-title" title={project.name}>
@@ -112,8 +112,8 @@ export function ProjectDetailPanel({
             <button
               className="detail-close"
               onClick={onClose}
-              aria-label="关闭"
-              title="关闭 (Esc)"
+              aria-label={t.close}
+              title={`${t.close} (Esc)`}
             >
               ×
             </button>
@@ -126,19 +126,19 @@ export function ProjectDetailPanel({
         </header>
 
         <section className="detail-section">
-          <div className="detail-label">分类</div>
+          <div className="detail-label">{t.detailCategory}</div>
           <div className="category-current">
-            <span className="category-pill">{currentCategory?.name ?? '未分类'}</span>
+            <span className="category-pill">{currentCategory?.name ?? t.detailUncategorized}</span>
             {isManual ? (
               <button
                 className="link-btn"
                 onClick={() => onUnassignCategory(project)}
-                title="清除手动分类，回到自动推断"
+                title={t.detailClearCategoryTitle}
               >
-                清除
+                {t.detailClearCategory}
               </button>
             ) : (
-              <span className="muted detail-hint">（自动推断）</span>
+              <span className="muted detail-hint">{t.detailAutoInferred}</span>
             )}
           </div>
           <div className="category-options">
@@ -147,6 +147,7 @@ export function ProjectDetailPanel({
                 key={c.id}
                 category={c}
                 active={c.id === currentCategoryId}
+                t={t}
                 onPick={() => onAssignCategory(project, c.id)}
                 onRemove={!c.builtin ? () => onRemoveCategory(c.id) : undefined}
               />
@@ -163,7 +164,7 @@ export function ProjectDetailPanel({
                   autoFocus
                   className="category-new-input"
                   value={newName}
-                  placeholder="分类名"
+                  placeholder={t.detailCategoryPlaceholder}
                   maxLength={20}
                   onChange={(e) => setNewName(e.target.value)}
                   onBlur={() => {
@@ -171,36 +172,36 @@ export function ProjectDetailPanel({
                   }}
                 />
                 <button type="submit" className="primary" disabled={!newName.trim()}>
-                  添加
+                  {t.add}
                 </button>
               </form>
             ) : (
               <button
                 className="category-new-btn"
                 onClick={() => setCreating(true)}
-                title="新建一个自定义分类"
+                title={t.detailNewCategoryTitle}
               >
-                + 新建分类
+                {t.detailNewCategory}
               </button>
             )}
           </div>
         </section>
 
         <section className="detail-section">
-          <div className="detail-label">基本信息</div>
+          <div className="detail-label">{t.detailMeta}</div>
           <dl className="detail-meta">
-            <dt>来源</dt>
+            <dt>{t.detailSource}</dt>
             <dd>
               {project.remoteProviders.length > 0
                 ? project.remoteProviders.map((p) => {
-                    const meta = PROVIDER_META[p];
+                    const meta = PROVIDER_KEYS[p];
                     return (
-                      <span key={p} className="detail-provider" title={meta.title}>
-                        {meta.label}
+                      <span key={p} className="detail-provider" title={t[meta.titleKey]}>
+                        {meta.label || t.providerUnknownLabel}
                       </span>
                     );
                   })
-                : <span title={LOCAL_META.title}>{LOCAL_META.label}</span>
+                : <span title={t.localOnlyDetailTitle}>{t.localOnly}</span>
               }
               {project.gitRemote && (
                 <>
@@ -212,7 +213,7 @@ export function ProjectDetailPanel({
               )}
             </dd>
 
-            <dt>路径</dt>
+            <dt>{t.detailPath}</dt>
             <dd>
               <span
                 className="detail-path"
@@ -223,21 +224,21 @@ export function ProjectDetailPanel({
               </span>
             </dd>
 
-            <dt>生态</dt>
+            <dt>{t.detailEcosystem}</dt>
             <dd>
               {project.ecosystems.length === 0
                 ? '—'
-                : project.ecosystems.map((e) => ECO_LABELS[e] ?? e).join(' · ')}
+                : project.ecosystems.map((e) => ECO_LABELS[e] ?? (e === 'unknown' ? t.ecoUnknown : e)).join(' · ')}
             </dd>
 
-            <dt>最近修改</dt>
+            <dt>{t.detailLastModified}</dt>
             <dd>{formatRelative(project.lastModified)}</dd>
 
             {project.gitDirty != null && (
               <>
-                <dt>Git 状态</dt>
+                <dt>{t.detailGitStatus}</dt>
                 <dd className={project.gitDirty ? 'detail-warn' : ''}>
-                  {project.gitDirty ? '有未提交的修改' : '工作区干净'}
+                  {project.gitDirty ? t.detailGitDirty : t.detailGitClean}
                 </dd>
               </>
             )}
@@ -246,15 +247,15 @@ export function ProjectDetailPanel({
 
         <section className="detail-section">
           <div className="detail-label">
-            可清理目录{' '}
+            {t.detailCleanables}{' '}
             {project.cleanables.length > 0 && (
               <span className="muted">
-                · 共 {formatBytes(project.cleanableSize)}
+                {t.detailTotal} {formatBytes(project.cleanableSize)}
               </span>
             )}
           </div>
           {project.cleanables.length === 0 ? (
-            <div className="muted detail-empty">该项目当前没有可清理的构建产物。</div>
+            <div className="muted detail-empty">{t.detailNoCleanables}</div>
           ) : (
             <ul className="detail-cleanables">
               {project.cleanables.map((c) => (
@@ -263,14 +264,14 @@ export function ProjectDetailPanel({
                   <span className="cleanable-hint muted">{c.hint}</span>
                   <span className="cleanable-size">{formatBytes(c.size)}</span>
                   <button className="link-btn" onClick={() => onReveal(c.path)}>
-                    定位
+                    {t.reveal}
                   </button>
                 </li>
               ))}
             </ul>
           )}
           <div className="muted detail-hint">
-            勾选与清理请回到列表里完成，详情面板只展示信息。
+            {t.detailCleanHint}
           </div>
         </section>
       </aside>
@@ -281,15 +282,16 @@ export function ProjectDetailPanel({
 interface ChipProps {
   category: Category;
   active: boolean;
+  t: Messages;
   onPick: () => void;
   /** 仅自定义分类传入，触发删除 */
   onRemove?: () => void;
 }
 
-function CategoryChip({ category, active, onPick, onRemove }: ChipProps) {
+function CategoryChip({ category, active, t, onPick, onRemove }: ChipProps) {
   return (
     <span className={`category-chip ${active ? 'active' : ''}`}>
-      <button className="category-chip-pick" onClick={onPick} title="切换到该分类">
+      <button className="category-chip-pick" onClick={onPick} title={t.detailSwitchCategory}>
         {category.name}
       </button>
       {onRemove && (
@@ -297,12 +299,12 @@ function CategoryChip({ category, active, onPick, onRemove }: ChipProps) {
           className="category-chip-remove"
           onClick={(e) => {
             e.stopPropagation();
-            if (confirm(`删除自定义分类「${category.name}」？\n该分类下的项目将回退到自动推断。`)) {
+            if (confirm(t.detailDeleteCategoryConfirm.replace('{name}', category.name))) {
               onRemove();
             }
           }}
-          title="删除该自定义分类"
-          aria-label="删除"
+          title={t.detailDeleteCategoryTitle}
+          aria-label={t.remove}
         >
           ×
         </button>

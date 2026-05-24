@@ -338,7 +338,7 @@ export function App() {
         />
       )}
 
-      {view === 'scanning' && <ScanScreen progress={progress} />}
+      {view === 'scanning' && <ScanScreen progress={progress} t={t} />}
 
       {view === 'results' && (
         <>
@@ -348,6 +348,7 @@ export function App() {
             scannedAt={scannedAt}
             activeTab={resultsTab}
             viewMode={viewMode}
+            t={t}
             onViewModeChange={handleViewModeChange}
             onTabChange={setResultsTab}
             onBackHome={handleBackHome}
@@ -360,13 +361,15 @@ export function App() {
                 projects={projects}
                 categoryStore={categoryStore}
                 viewMode={viewMode}
-                onReveal={(p) => window.devzen.revealInFinder(p)}
-                onSelectProject={(p) => setDetailProject(p)}
+                t={t}
+                onReveal={(p: string) => window.devzen.revealInFinder(p)}
+                onSelectProject={(p: ProjectInfo) => setDetailProject(p)}
               />
             ) : (
               <CleanupList
                 projects={projects}
                 selected={selected}
+                t={t}
                 onToggleDir={toggleDir}
                 onToggleProject={toggleProject}
                 onReveal={(p) => window.devzen.revealInFinder(p)}
@@ -382,6 +385,7 @@ export function App() {
               selectedSize={selectedSize}
               cleaning={cleaning}
               lastResults={lastResults}
+              t={t}
               onCleanClick={() => setConfirmOpen(true)}
               onClearSelection={() => setSelected(new Set())}
             />
@@ -392,6 +396,7 @@ export function App() {
       <ProjectDetailPanel
         project={detailLatest}
         categoryStore={categoryStore}
+        t={t}
         onClose={() => setDetailProject(null)}
         onAssignCategory={handleAssignCategory}
         onUnassignCategory={handleUnassignCategory}
@@ -402,33 +407,34 @@ export function App() {
 
       {confirmOpen && (
         <ConfirmDialog
-          title="确认清理"
+          title={t.confirmTitle}
           message={
             <>
               <p>
-                将删除 <strong>{selected.size}</strong> 个目录， 预计释放{' '}
+                {t.confirmDeleteCount} <strong>{selected.size}</strong> {t.confirmDirsEstimate}{' '}
                 <strong>{formatBytes(selectedSize)}</strong>。
                 <br />
                 <span className="muted">
-                  仅删除构建产物目录（node_modules、target、build 等），不会动你的源码。
+                  {t.confirmSafeNote}
                 </span>
               </p>
               {localOnlyProjects.length > 0 && (
                 <div className="warn-block">
-                  <strong>⚠ 以下项目没有远程备份</strong>
+                  <strong>{t.confirmLocalWarn}</strong>
                   <ul>
                     {localOnlyProjects.map((p) => (
                       <li key={p.path}>{p.name}</li>
                     ))}
                   </ul>
                   <span className="muted">
-                    本次只会删除这些项目下的构建产物，不会删除项目本身。但请确认你知道自己在做什么。
+                    {t.confirmLocalNote}
                   </span>
                 </div>
               )}
             </>
           }
-          confirmText={cleaning ? '清理中…' : '确认清理'}
+          confirmText={cleaning ? t.cleaning : t.confirmBtn}
+          cancelText={t.cancel}
           confirmDisabled={cleaning}
           onConfirm={handleClean}
           onCancel={() => setConfirmOpen(false)}

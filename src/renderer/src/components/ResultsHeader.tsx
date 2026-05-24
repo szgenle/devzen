@@ -1,5 +1,6 @@
 import { shortenPath, formatRelative } from '../utils/format';
 import type { ViewMode } from '../App';
+import type { Messages } from '../utils/i18n';
 
 type ResultsTab = 'overview' | 'cleanup';
 
@@ -10,6 +11,7 @@ interface Props {
   scannedAt: number | null;
   activeTab: ResultsTab;
   viewMode: ViewMode;
+  t: Messages;
   onViewModeChange: (mode: ViewMode) => void;
   onTabChange: (tab: ResultsTab) => void;
   onBackHome: () => void;
@@ -26,6 +28,7 @@ export function ResultsHeader({
   scannedAt,
   activeTab,
   viewMode,
+  t,
   onViewModeChange,
   onTabChange,
   onBackHome,
@@ -38,9 +41,9 @@ export function ResultsHeader({
           className="ghost-btn back-btn"
           onClick={onBackHome}
           disabled={cleaning}
-          title="返回首页"
+          title={t.backToHome}
         >
-          ← 首页
+          {t.backHome}
         </button>
         <span className="brand">⌬ DevZen</span>
       </div>
@@ -50,30 +53,30 @@ export function ResultsHeader({
             className={`tab-btn ${activeTab === 'overview' ? 'active' : ''}`}
             onClick={() => onTabChange('overview')}
           >
-            概览
+            {t.tabOverview}
           </button>
           <button
             className={`tab-btn ${activeTab === 'cleanup' ? 'active' : ''}`}
             onClick={() => onTabChange('cleanup')}
           >
-            清理
+            {t.tabCleanup}
           </button>
         </nav>
       </div>
       <div className="results-header-right">
         {activeTab === 'overview' && (
-          <div className="view-toggle" title="切换视图">
+          <div className="view-toggle" title={t.viewToggle}>
             <button
               className={`view-toggle-btn ${viewMode === 'list' ? 'active' : ''}`}
               onClick={() => onViewModeChange('list')}
-              title="列表视图"
+              title={t.viewList}
             >
               ☰
             </button>
             <button
               className={`view-toggle-btn ${viewMode === 'card' ? 'active' : ''}`}
               onClick={() => onViewModeChange('card')}
-              title="卡片视图"
+              title={t.viewCard}
             >
               ▦
             </button>
@@ -87,8 +90,8 @@ export function ResultsHeader({
             {formatRelative(scannedAt)}
           </span>
         )}
-        <button onClick={onRescan} disabled={cleaning} title="重新扫描当前目录">
-          重新扫描
+        <button onClick={onRescan} disabled={cleaning} title={t.rescanTitle}>
+          {t.rescanBtn}
         </button>
       </div>
     </header>

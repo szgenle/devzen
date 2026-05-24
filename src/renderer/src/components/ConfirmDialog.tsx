@@ -4,6 +4,7 @@ interface Props {
   title: string;
   message: ReactNode;
   confirmText?: string;
+  cancelText?: string;
   confirmDisabled?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
@@ -12,7 +13,8 @@ interface Props {
 export function ConfirmDialog({
   title,
   message,
-  confirmText = '确定',
+  confirmText = 'OK',
+  cancelText = 'Cancel',
   confirmDisabled,
   onConfirm,
   onCancel
@@ -23,7 +25,7 @@ export function ConfirmDialog({
         <h3>{title}</h3>
         <p>{message}</p>
         <div className="modal-actions">
-          <button onClick={onCancel}>取消</button>
+          <button onClick={onCancel}>{cancelText}</button>
           <button className="danger" onClick={onConfirm} disabled={confirmDisabled}>
             {confirmText}
           </button>

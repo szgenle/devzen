@@ -64,15 +64,15 @@ export function HomeScreen({
                 key={entry.rootDir}
                 className="history-item"
                 onClick={() => onViewEntry(entry)}
-                title="点击查看上次扫描结果"
+                title={t.homeClickToView}
               >
                 <div className="history-item-main">
                   <div className="history-item-path" title={entry.rootDir}>
                     {shortenPath(entry.rootDir, 64)}
                   </div>
                   <div className="history-item-meta muted">
-                    {entry.projects.length} 个项目 · 可清理 {formatBytes(totalCleanable)} ·
-                    上次扫描 {formatRelative(entry.scannedAt)}
+                    {entry.projects.length} {t.overviewProjectCount} · {t.cleanable} {formatBytes(totalCleanable)} ·
+                    {t.scannedAtPrefix} {formatRelative(entry.scannedAt)}
                   </div>
                 </div>
                 <div className="history-item-actions" onClick={(e) => e.stopPropagation()}>

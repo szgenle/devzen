@@ -1,5 +1,6 @@
 import type { CleanResult } from '@shared/types';
 import { formatBytes } from '../utils/format';
+import type { Messages } from '../utils/i18n';
 
 interface Props {
   projectCount: number;
@@ -8,6 +9,7 @@ interface Props {
   selectedSize: number;
   cleaning: boolean;
   lastResults: CleanResult[] | null;
+  t: Messages;
   onCleanClick: () => void;
   onClearSelection: () => void;
 }
@@ -25,6 +27,7 @@ export function ActionBar({
   selectedSize,
   cleaning,
   lastResults,
+  t,
   onCleanClick,
   onClearSelection
 }: Props) {
@@ -38,18 +41,18 @@ export function ActionBar({
     <footer className={`action-bar ${hasSelection ? 'has-selection' : ''}`}>
       <div className="action-bar-left">
         <span>
-          项目 <strong>{projectCount}</strong>
+          {t.projects} <strong>{projectCount}</strong>
         </span>
         <span className="sep">·</span>
         <span>
-          可清理 <strong>{formatBytes(totalCleanable)}</strong>
+          {t.cleanable} <strong>{formatBytes(totalCleanable)}</strong>
         </span>
         {lastResults && (
           <>
             <span className="sep">·</span>
             <span className="last-result">
-              已释放 <strong>{formatBytes(lastFreed)}</strong>
-              {lastFailed > 0 && <span className="error"> ({lastFailed} 个失败)</span>}
+              {t.freed} <strong>{formatBytes(lastFreed)}</strong>
+              {lastFailed > 0 && <span className="error"> ({lastFailed} {t.failed})</span>}
             </span>
           </>
         )}
@@ -59,18 +62,18 @@ export function ActionBar({
         {hasSelection ? (
           <>
             <span className="selection-summary">
-              已选 <strong>{selectedCount}</strong> 个目录 ·{' '}
+              {t.selectedDirs} <strong>{selectedCount}</strong> {t.dirs} ·{' '}
               <strong>{formatBytes(selectedSize)}</strong>
             </span>
             <button className="link-btn" onClick={onClearSelection} disabled={cleaning}>
-              取消选择
+              {t.clearSelection}
             </button>
             <button className="danger" onClick={onCleanClick} disabled={cleaning}>
-              清理选中
+              {t.cleanSelected}
             </button>
           </>
         ) : (
-          <span className="action-bar-hint muted">勾选要清理的目录后，这里会出现「清理选中」</span>
+          <span className="action-bar-hint muted">{t.selectHint}</span>
         )}
       </div>
     </footer>
