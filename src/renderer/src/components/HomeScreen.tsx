@@ -1,14 +1,17 @@
 import { shortenPath, formatRelative, formatBytes } from '../utils/format';
 import type { HistoryEntry } from '../utils/storage';
+import type { Messages } from '../utils/i18n';
 
 interface Props {
   rootDir: string | null;
   history: HistoryEntry[];
+  t: Messages;
   onPickDir: () => void;
   onScan: () => void;
   onViewEntry: (entry: HistoryEntry) => void;
   onRescanEntry: (entry: HistoryEntry) => void;
   onRemoveEntry: (rootDir: string) => void;
+  onOpenSettings: () => void;
 }
 
 /**
@@ -20,14 +23,16 @@ interface Props {
 export function HomeScreen({
   rootDir,
   history,
+  t,
   onPickDir,
   onScan,
   onViewEntry,
   onRescanEntry,
-  onRemoveEntry
+  onRemoveEntry,
+  onOpenSettings
 }: Props) {
   if (history.length === 0) {
-    return <WelcomeCard rootDir={rootDir} onPickDir={onPickDir} onScan={onScan} />;
+    return <WelcomeCard rootDir={rootDir} t={t} onPickDir={onPickDir} onScan={onScan} onOpenSettings={onOpenSettings} />;
   }
 
   return (
@@ -36,11 +41,19 @@ export function HomeScreen({
         <div className="home-list-head">
           <div>
             <div className="home-brand">⌬ DevZen</div>
-            <h1 className="home-list-title">你的扫描历史</h1>
+            <h1 className="home-list-title">{t.homeHistoryTitle}</h1>
             <p className="home-list-tagline muted">
-              点击条目可直接查看上次结果；清理是低频操作，重扫请按需触发。
+              {t.homeHistoryTagline}
             </p>
           </div>
+          <button
+            className="icon-btn settings-btn"
+            onClick={onOpenSettings}
+            title={t.settings}
+            aria-label={t.settings}
+          >
+            ⚙
+          </button>
         </div>
 
         <ul className="history-list">
@@ -64,16 +77,16 @@ export function HomeScreen({
                 </div>
                 <div className="history-item-actions" onClick={(e) => e.stopPropagation()}>
                   <button className="link-btn" onClick={() => onViewEntry(entry)}>
-                    查看
+                    {t.homeView}
                   </button>
                   <button className="link-btn" onClick={() => onRescanEntry(entry)}>
-                    重新扫描
+                    {t.homeRescan}
                   </button>
                   <button
                     className="icon-btn history-remove"
                     onClick={() => onRemoveEntry(entry.rootDir)}
-                    title="从历史中移除"
-                    aria-label="从历史中移除"
+                    title={t.homeRemove}
+                    aria-label={t.homeRemove}
                   >
                     ×
                   </button>
@@ -85,16 +98,16 @@ export function HomeScreen({
 
         <div className="home-list-foot">
           <div className="home-path">
-            <span className="home-path-label">扫描新目录</span>
+            <span className="home-path-label">{t.homeScanNew}</span>
             <span className="home-path-value" title={rootDir ?? ''}>
-              {rootDir ? shortenPath(rootDir, 50) : '加载中…'}
+              {rootDir ? shortenPath(rootDir, 50) : t.homeLoading}
             </span>
             <button className="link-btn" onClick={onPickDir}>
-              换个目录
+              {t.homeChangeDir}
             </button>
           </div>
           <button className="primary" onClick={onScan} disabled={!rootDir}>
-            开始扫描
+            {t.homeScan}
           </button>
         </div>
       </div>
@@ -108,35 +121,44 @@ export function HomeScreen({
  */
 function WelcomeCard({
   rootDir,
+  t,
   onPickDir,
-  onScan
-}: Pick<Props, 'rootDir' | 'onPickDir' | 'onScan'>) {
+  onScan,
+  onOpenSettings
+}: Pick<Props, 'rootDir' | 'onPickDir' | 'onScan' | 't' | 'onOpenSettings'>) {
   return (
     <div className="home-screen">
       <div className="home-card">
-        <div className="home-brand">⌬ DevZen</div>
-        <h1 className="home-title">让你的项目目录一目了然</h1>
-        <p className="home-tagline">
-          扫描你的项目目录，DevZen 会列出你有哪些项目、来自哪里、占了多少空间，
-          并准确告诉你哪些构建产物可以安全删除。
-        </p>
+        <div className="home-card-top">
+          <div className="home-brand">⌬ DevZen</div>
+          <button
+            className="icon-btn settings-btn"
+            onClick={onOpenSettings}
+            title={t.settings}
+            aria-label={t.settings}
+          >
+            ⚙
+          </button>
+        </div>
+        <h1 className="home-title">{t.homeWelcome}</h1>
+        <p className="home-tagline">{t.homeTagline}</p>
 
         <div className="home-path">
-          <span className="home-path-label">扫描路径</span>
+          <span className="home-path-label">{t.homePathLabel}</span>
           <span className="home-path-value" title={rootDir ?? ''}>
-            {rootDir ? shortenPath(rootDir, 60) : '加载中…'}
+            {rootDir ? shortenPath(rootDir, 60) : t.homeLoading}
           </span>
           <button className="link-btn" onClick={onPickDir}>
-            换个目录
+            {t.homeChangeDir}
           </button>
         </div>
 
         <button className="primary home-cta" onClick={onScan} disabled={!rootDir}>
-          开始扫描
+          {t.homeScan}
         </button>
 
         <div className="home-foot muted">
-          仅在你点击「清理选中」后才会删除文件，扫描阶段不会动你的任何数据。
+          {t.homeTip}
         </div>
       </div>
     </div>

@@ -8,6 +8,7 @@ import { ScanScreen } from './components/ScanScreen';
 import { ResultsHeader } from './components/ResultsHeader';
 import { ActionBar } from './components/ActionBar';
 import { ConfirmDialog } from './components/ConfirmDialog';
+import { SettingsScreen } from './components/SettingsScreen';
 import { formatBytes } from './utils/format';
 import {
   loadHistory,
@@ -24,8 +25,16 @@ import {
   type Category,
   type CategoryStore
 } from './utils/categories';
+import {
+  loadPreferences,
+  savePreferences,
+  resolveTheme,
+  type ThemeMode,
+  type Lang
+} from './utils/preferences';
+import { getMessages } from './utils/i18n';
 
-type View = 'home' | 'scanning' | 'results';
+type View = 'home' | 'scanning' | 'results' | 'settings';
 type ResultsTab = 'overview' | 'cleanup';
 export type ViewMode = 'list' | 'card';
 
@@ -58,6 +67,24 @@ export function App() {
   const [viewMode, setViewMode] = useState<ViewMode>(loadViewMode);
   // 当前打开详情侧边栏的项目；null 表示未打开
   const [detailProject, setDetailProject] = useState<ProjectInfo | null>(null);
+  // 用户偏好设置（主题 / 语言）
+  const [prefs, setPrefs] = useState(() => loadPreferences());
+  const t = useMemo(() => getMessages(prefs.lang), [prefs.lang]);
+
+  // 应用主题到 <html> 标签
+  useEffect(() => {
+    const resolved = resolveTheme(prefs.theme);
+    document.documentElement.setAttribute('data-theme', resolved);
+    // system 模式下监听系统主题变化
+    if (prefs.theme === 'system') {
+      const mq = window.matchMedia('(prefers-color-scheme: light)');
+      const handler = () => {
+        document.documentElement.setAttribute('data-theme', mq.matches ? 'light' : 'dark');
+      };
+      mq.addEventListener('change', handler);
+      return () => mq.removeEventListener('change', handler);
+    }
+  }, [prefs.theme]);
 
   // 启动时加载历史与默认主目录，但保持在首页：
   // 清理是低频操作，没必要每次进入都自动扫描。
@@ -153,6 +180,26 @@ export function App() {
     setViewMode(mode);
     saveViewMode(mode);
   }, []);
+
+  // ---------------- 偏好设置 ----------------
+  const handleThemeChange = useCallback((mode: ThemeMode) => {
+    setPrefs((prev) => {
+      const next = { ...prev, theme: mode };
+      savePreferences(next);
+      return next;
+    });
+  }, []);
+
+  const handleLangChange = useCallback((lang: Lang) => {
+    setPrefs((prev) => {
+      const next = { ...prev, lang };
+      savePreferences(next);
+      return next;
+    });
+  }, []);
+
+  const handleOpenSettings = useCallback(() => setView('settings'), []);
+  const handleBackFromSettings = useCallback(() => setView('home'), []);
 
   // ---------------- 分类管理 ----------------
   const handleAssignCategory = useCallback((p: ProjectInfo, categoryId: string) => {
@@ -265,16 +312,29 @@ export function App() {
   }, []);
 
   return (
-    <div className={`app app-${view}`}>
+    <div className={`app app-${view === 'settings' ? 'home' : view}`}>
       {view === 'home' && (
         <HomeScreen
           rootDir={rootDir}
           history={history}
+          t={t}
           onPickDir={handlePickRootDir}
           onScan={handleScan}
           onViewEntry={handleViewEntry}
           onRescanEntry={handleRescanEntry}
           onRemoveEntry={handleRemoveEntry}
+          onOpenSettings={handleOpenSettings}
+        />
+      )}
+
+      {view === 'settings' && (
+        <SettingsScreen
+          theme={prefs.theme}
+          lang={prefs.lang}
+          t={t}
+          onThemeChange={handleThemeChange}
+          onLangChange={handleLangChange}
+          onBack={handleBackFromSettings}
         />
       )}
 
