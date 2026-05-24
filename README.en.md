@@ -10,6 +10,8 @@
 
 See first, then act. DevZen isn't just another "cleanup tool" — it's an inventory of your local projects: what you have, where they came from, how much disk they take, and which ones are safe to delete.
 
+![DevZen Overview](./docs/assets/screenshots/4-overview-en.png)
+
 ## 🖥 Platform Support
 
 v0.1.x is **macOS only**. Roughly 80% of the code (scan / clean / archive / dedupe / reveal) is already cross-platform — the only macOS-specific part is the editor/terminal launcher (built on LaunchServices `open -a`).
@@ -32,6 +34,22 @@ If you have a concrete Windows use case, drop a note in [Issues](https://github.
 ## 👥 Target Users
 
 Any developer drowning in "too many messy projects" — especially people without a CS background who started coding via AI editors and only recently met GitHub. They may not know `node_modules` is disposable, may not remember which repos they cloned, and may have AI-generated projects that haven't been pushed yet. DevZen is also the author's own daily-use tool — "too many messy projects" is a pain point he has too.
+
+## 📸 Screenshots
+
+> Screenshots are from the English UI; switch language in the in-app Settings panel ([中文截图](./README.md#-界面截图)).
+
+| Home | Overview |
+|---|---|
+| ![Home](./docs/assets/screenshots/1-home-en.png) | ![Overview](./docs/assets/screenshots/4-overview-en.png) |
+
+| Cleanup | Project Detail |
+|---|---|
+| ![Cleanup](./docs/assets/screenshots/3-cleanup-en.png) | ![Project Detail](./docs/assets/screenshots/5-detail-en.png) |
+
+| Archives |
+|---|
+| ![Archives](./docs/assets/screenshots/2-archives-en.png) |
 
 ## 🧱 Tech Stack
 

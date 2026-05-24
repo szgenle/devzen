@@ -10,6 +10,8 @@
 
 先看见，再行动。DevZen 不是另一个"清理工具"，而是你本地项目的清单：哪些项目、来自哪里、占了多少空间、哪些可以安全删除。
 
+![DevZen 概览](./docs/assets/screenshots/4-overview-zh.png)
+
 ## 🖥 平台支持
 
 当前 v0.1.x 仅支持 **macOS**。约 80% 的代码（扫描 / 清理 / 归档 / 重复检测 / Reveal）已经跨平台，真正与 macOS 强绑定的只有"编辑器/终端启动"逻辑（用了 LaunchServices `open -a`）。
@@ -32,6 +34,22 @@
 ## 👥 目标用户
 
 所有受困于"项目多且乱"的开发者——尤其是非计算机科班出身、通过 AI 编程开始写代码和接触 GitHub 的新手：他们不一定知道 `node_modules` 能删、不一定记得自己 clone 过哪些项目、也可能用 AI 生成了项目但还没推到 GitHub。DevZen 也是作者自用的工具——"项目多且乱"这个痛点他自己也同样需要解决。
+
+## 📸 界面截图
+
+> 截图为简体中文界面，应用内可在「设置」中切换到 English（[English screenshots](./README.en.md#-screenshots)）。
+
+| 首页 | 概览列表 |
+|---|---|
+| ![首页](./docs/assets/screenshots/1-home-zh.png) | ![概览列表](./docs/assets/screenshots/4-overview-zh.png) |
+
+| 清理列表 | 项目详情 |
+|---|---|
+| ![清理列表](./docs/assets/screenshots/3-cleanup-zh.png) | ![项目详情](./docs/assets/screenshots/5-detail-zh.png) |
+
+| 归档列表 |
+|---|
+| ![归档列表](./docs/assets/screenshots/2-archives-zh.png) |
 
 ## 🧱 技术栈
 
