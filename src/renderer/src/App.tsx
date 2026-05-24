@@ -16,6 +16,13 @@ export function App() {
   const [cleaning, setCleaning] = useState(false);
   const [lastResults, setLastResults] = useState<CleanResult[] | null>(null);
 
+  // 启动时拿到默认主目录建议，省去手动选择目录的步骤
+  useEffect(() => {
+    window.devzen.getDefaultRootDir().then((dir) => {
+      setRootDir((curr) => curr ?? dir);
+    });
+  }, []);
+
   // 订阅扫描进度
   useEffect(() => {
     const off = window.devzen.onScanProgress((p) => setProgress(p));
@@ -54,6 +61,22 @@ export function App() {
       }
     }
     return total;
+  }, [projects, selected]);
+
+  /** 选中集中所属项目中，无远程备份（source === 'local'）的项目。
+   *  这些项目只在本地，删了就没了，需要在清理前强提醒。
+   *  注意：这里判的是"项目本身"在本地唯一，不是"删除项目根"。
+   *  即使只是删 node_modules，对于不懂技术的用户也需要告诉他们：
+   *  “这个项目没有远程备份，请确认你只是在清理构建产物、不是删代码。”
+   */
+  const localOnlyProjects = useMemo(() => {
+    const list: ProjectInfo[] = [];
+    for (const p of projects) {
+      if (p.source !== 'local') continue;
+      const hit = p.cleanables.some((c) => selected.has(c.path));
+      if (hit) list.push(p);
+    }
+    return list;
   }, [projects, selected]);
 
   const toggleDir = useCallback((dirPath: string) => {
@@ -110,11 +133,22 @@ export function App() {
       <main className="main">
         {projects.length === 0 && !scanning && (
           <div className="empty">
-            <h2>欢迎使用 DevZen</h2>
-            <p>选择一个 Dev 根目录（例如 ~/Dev），扫描所有项目并清理构建产物，释放磁盘空间。</p>
-            <button className="primary" onClick={handlePickDir}>
-              选择目录
-            </button>
+            <h2>让你的项目一目了然</h2>
+            <p>
+              扫描你的项目目录，DevZen 会列出你有哪些项目、来自哪里、占了多少空间，
+              <br />并准确告诉你哪些构建产物可以安全删除。
+            </p>
+            {rootDir && (
+              <p className="muted truncate">
+                默认扫描路径：<code>{rootDir}</code>
+              </p>
+            )}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="primary" onClick={handleScan} disabled={!rootDir}>
+                开始扫描
+              </button>
+              <button onClick={handlePickDir}>换个目录</button>
+            </div>
           </div>
         )}
 
@@ -148,7 +182,31 @@ export function App() {
       {confirmOpen && (
         <ConfirmDialog
           title="确认清理"
-          message={`将删除 ${selected.size} 个目录，预计释放 ${formatBytes(selectedSize)}。此操作不可撤销。`}
+          message={
+            <>
+              <p>
+                将删除 <strong>{selected.size}</strong> 个目录，
+                预计释放 <strong>{formatBytes(selectedSize)}</strong>。
+                <br />
+                <span className="muted">
+                  仅删除构建产物目录（node_modules、target、build 等），不会动你的源码。
+                </span>
+              </p>
+              {localOnlyProjects.length > 0 && (
+                <div className="warn-block">
+                  <strong>⚠ 以下项目没有远程备份</strong>
+                  <ul>
+                    {localOnlyProjects.map((p) => (
+                      <li key={p.path}>{p.name}</li>
+                    ))}
+                  </ul>
+                  <span className="muted">
+                    本次只会删除这些项目下的构建产物，不会删除项目本身。但请确认你知道自己在做什么。
+                  </span>
+                </div>
+              )}
+            </>
+          }
           confirmText={cleaning ? '清理中…' : '确认清理'}
           confirmDisabled={cleaning}
           onConfirm={handleClean}

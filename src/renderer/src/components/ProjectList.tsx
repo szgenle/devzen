@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { ProjectInfo } from '@shared/types';
+import type { ProjectInfo, ProjectSource } from '@shared/types';
 import { formatBytes, formatRelative, shortenPath } from '../utils/format';
 
 interface Props {
@@ -20,6 +20,24 @@ const ECO_LABELS: Record<string, string> = {
   'apple-xcode': 'Xcode',
   'apple-spm': 'SwiftPM',
   unknown: '未知'
+};
+
+const SOURCE_META: Record<ProjectSource, { label: string; title: string; cls: string }> = {
+  github: {
+    label: 'GitHub',
+    title: '来自 GitHub，可重新 clone',
+    cls: 'tag-source-github'
+  },
+  remote: {
+    label: '远程仓库',
+    title: '有远程备份（GitLab/Codeup 等）',
+    cls: 'tag-source-remote'
+  },
+  local: {
+    label: '仅本地',
+    title: '没有远程备份，删了就没了',
+    cls: 'tag-source-local'
+  }
 };
 
 export function ProjectList({
@@ -58,16 +76,37 @@ function ProjectRow({ project, selected, onToggleDir, onToggleProject, onReveal 
   const allSelected =
     project.cleanables.length > 0 && project.cleanables.every((c) => selected.has(c.path));
   const someSelected = project.cleanables.some((c) => selected.has(c.path));
+  const sourceMeta = SOURCE_META[project.source];
 
   if (project.cleanables.length === 0) {
     // 无可清理目录的项目，仍然显示但弱化
     return (
       <div className="project-row empty-row">
         <div className="project-head">
-          <span className="project-name muted">{project.name}</span>
-          <span className="project-meta muted">
-            {project.ecosystems.map((e) => ECO_LABELS[e] ?? e).join(' · ')} · 无可清理目录
-          </span>
+          <div className="project-info">
+            <div className="project-name-row">
+              <span className="project-name muted">{project.name}</span>
+              <span className={`tag ${sourceMeta.cls}`} title={sourceMeta.title}>
+                {sourceMeta.label}
+              </span>
+              {project.ecosystems.map((e) => (
+                <span key={e} className={`tag tag-${e}`}>
+                  {ECO_LABELS[e] ?? e}
+                </span>
+              ))}
+            </div>
+            {project.description && (
+              <div className="project-desc muted" title={project.description}>
+                {project.description}
+              </div>
+            )}
+            <div className="project-sub">
+              <span className="path muted" onClick={() => onReveal(project.path)}>
+                {shortenPath(project.path, 70)}
+              </span>
+              <span className="muted">· 无可清理目录</span>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -94,13 +133,25 @@ function ProjectRow({ project, selected, onToggleDir, onToggleProject, onReveal 
         <div className="project-info">
           <div className="project-name-row">
             <span className="project-name">{project.name}</span>
+            <span className={`tag ${sourceMeta.cls}`} title={sourceMeta.title}>
+              {sourceMeta.label}
+            </span>
             {project.ecosystems.map((e) => (
               <span key={e} className={`tag tag-${e}`}>
                 {ECO_LABELS[e] ?? e}
               </span>
             ))}
-            {project.gitRemote && <span className="tag tag-git">git</span>}
+            {project.gitDirty && (
+              <span className="tag tag-dirty" title="有未提交的修改">
+                有修改
+              </span>
+            )}
           </div>
+          {project.description && (
+            <div className="project-desc muted" title={project.description}>
+              {project.description}
+            </div>
+          )}
           <div className="project-sub">
             <span className="path" title={project.path} onClick={() => onReveal(project.path)}>
               {shortenPath(project.path, 70)}

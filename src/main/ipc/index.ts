@@ -1,4 +1,4 @@
-import { ipcMain, dialog, shell, BrowserWindow } from 'electron';
+import { app, ipcMain, dialog, shell, BrowserWindow } from 'electron';
 import { IpcChannels } from '@shared/ipc-channels.js';
 import { scanProjects } from '../core/scanner.js';
 import { cleanDirectories } from '../core/cleaner.js';
@@ -6,6 +6,11 @@ import type { ScanProgress } from '@shared/types';
 
 /** 注册全部 IPC handler。需在 app ready 之后、创建 window 之前调用一次。 */
 export function registerIpcHandlers(): void {
+  ipcMain.handle(IpcChannels.GetDefaultRootDir, () => {
+    // 面向非程序员用户，默认从主目录扫起；用户可随时换为其他目录。
+    return app.getPath('home');
+  });
+
   ipcMain.handle(IpcChannels.PickRootDir, async (event) => {
     const win = BrowserWindow.fromWebContents(event.sender);
     const result = await dialog.showOpenDialog(win!, {

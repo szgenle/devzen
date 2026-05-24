@@ -28,16 +28,32 @@ export interface CleanableDir {
   hint: string;
 }
 
+/**
+ * 项目来源：影响"删了就没了"的提示强度。
+ * - github：可重新 clone
+ * - remote：有其他远程（GitLab/Codeup 等），可重新 clone
+ * - local：无远程或非 git 仓库，删除后无法恢复
+ */
+export type ProjectSource = 'github' | 'remote' | 'local';
+
 /** 扫描得到的项目 */
 export interface ProjectInfo {
   /** 项目根目录绝对路径 */
   path: string;
   /** 显示名（默认目录名） */
   name: string;
+  /** 一句话描述。来自 package.json description 或 README 首段，未来可由 LLM 改写。 */
+  description: string | null;
   /** 识别到的生态（一个项目可能匹配多个 marker） */
   ecosystems: EcosystemId[];
   /** Git remote URL（若为 Git 仓库） */
   gitRemote: string | null;
+  /** 是否为 Git 仓库（即使没有 remote，也可能是本地 git init） */
+  isGitRepo: boolean;
+  /** 项目来源分类，决定删除时的提醒强度 */
+  source: ProjectSource;
+  /** 是否有未提交的修改；非 git 仓库或检测失败为 null */
+  gitDirty: boolean | null;
   /** 最近修改时间（毫秒时间戳，取 marker 文件 mtime） */
   lastModified: number | null;
   /** 可清理目录列表 */
@@ -63,6 +79,8 @@ export interface CleanResult {
 
 /** preload 暴露给渲染层的 API */
 export interface DevZenAPI {
+  /** 默认建议的扫描根目录（一般为用户主目录） */
+  getDefaultRootDir(): Promise<string>;
   /** 选择扫描根目录（打开系统目录选择对话框） */
   pickRootDir(): Promise<string | null>;
   /** 扫描指定目录下的所有项目 */

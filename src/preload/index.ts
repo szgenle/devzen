@@ -3,6 +3,9 @@ import { IpcChannels } from '@shared/ipc-channels.js';
 import type { CleanResult, DevZenAPI, ProjectInfo, ScanProgress } from '@shared/types';
 
 const api: DevZenAPI = {
+  getDefaultRootDir: () =>
+    ipcRenderer.invoke(IpcChannels.GetDefaultRootDir) as Promise<string>,
+
   pickRootDir: () => ipcRenderer.invoke(IpcChannels.PickRootDir) as Promise<string | null>,
 
   scanProjects: (rootDir: string) =>

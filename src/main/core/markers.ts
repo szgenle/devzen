@@ -109,3 +109,26 @@ export const SKIP_DIRS = new Set<string>([
   'Pods', // CocoaPods
   'vendor'
 ]);
+
+/**
+ * 当扫描入口为用户主目录时，需要跳过的系统/非项目顶层目录。
+ * 目标用户多为非程序员，不一定有统一的 Dev 目录，因此默认从 $HOME 扫起，
+ * 但要避免把 macOS 系统目录、应用配置等误识别。
+ */
+export const SYSTEM_SKIP_DIRS = new Set<string>([
+  // macOS 系统/用户目录
+  'Library',
+  'Applications',
+  'Movies',
+  'Music',
+  'Pictures',
+  'Public',
+  '.Trash',
+  '.cups',
+  // 跨平台常见的非项目目录
+  'Downloads',
+  // 云盘同步目录里的项目通常不该被本工具清理
+  'Dropbox',
+  'OneDrive',
+  'Google Drive'
+]);

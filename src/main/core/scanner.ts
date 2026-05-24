@@ -6,9 +6,10 @@ import type {
   CleanableDir,
   EcosystemId,
   ProjectInfo,
+  ProjectSource,
   ScanProgress
 } from '@shared/types';
-import { ECOSYSTEMS, SKIP_DIRS } from './markers.js';
+import { ECOSYSTEMS, SKIP_DIRS, SYSTEM_SKIP_DIRS } from './markers.js';
 
 const execAsync = promisify(exec);
 
@@ -18,6 +19,11 @@ export interface ScanOptions {
   maxDepth?: number;
   /** 进度回调 */
   onProgress?: (p: ScanProgress) => void;
+  /**
+   * 是否启用系统目录智能排除（Library/Applications 等）。
+   * 默认：当 rootDir === $HOME 时自动启用。
+   */
+  skipSystemDirs?: boolean;
 }
 
 /**
@@ -31,6 +37,10 @@ export async function scanProjects(
 ): Promise<ProjectInfo[]> {
   const maxDepth = options.maxDepth ?? 5;
   const onProgress = options.onProgress;
+  const home = process.env.HOME ?? '';
+  // 当扫描入口为用户主目录时默认启用系统目录排除
+  const skipSystem =
+    options.skipSystemDirs ?? (home !== '' && path.resolve(rootDir) === path.resolve(home));
   const projects: ProjectInfo[] = [];
   let scannedDirs = 0;
 
@@ -52,7 +62,7 @@ export async function scanProjects(
     // 优先判定当前目录是不是项目根
     const ecosystems = await detectEcosystems(dir, entries);
     if (ecosystems.length > 0) {
-      const project = await buildProjectInfo(dir, ecosystems);
+      const project = await buildProjectInfo(dir, ecosystems, entries);
       projects.push(project);
       onProgress?.({
         scannedDirs,
@@ -68,6 +78,8 @@ export async function scanProjects(
       if (!e.isDirectory()) continue;
       if (e.name.startsWith('.')) continue; // 跳过隐藏目录
       if (SKIP_DIRS.has(e.name)) continue;
+      // 仅在顶层（depth === 0）过滤系统目录，避免误伤子目录中同名项目
+      if (skipSystem && depth === 0 && SYSTEM_SKIP_DIRS.has(e.name)) continue;
       await walk(path.join(dir, e.name), depth + 1);
     }
   }
@@ -80,7 +92,7 @@ export async function scanProjects(
 
 /** 在给定目录中识别命中的生态列表 */
 async function detectEcosystems(
-  dir: string,
+  _dir: string,
   entries: import('node:fs').Dirent[]
 ): Promise<EcosystemId[]> {
   const names = entries.map((e) => e.name);
@@ -101,18 +113,27 @@ async function detectEcosystems(
 /** 组装一个项目的完整信息 */
 async function buildProjectInfo(
   dir: string,
-  ecosystems: EcosystemId[]
+  ecosystems: EcosystemId[],
+  entries: import('node:fs').Dirent[]
 ): Promise<ProjectInfo> {
   const cleanables = await collectCleanables(dir, ecosystems);
   const cleanableSize = cleanables.reduce((s, c) => s + c.size, 0);
-  const gitRemote = await readGitRemote(dir);
+  const isGitRepo = entries.some((e) => e.name === '.git');
+  const gitRemote = isGitRepo ? await readGitRemote(dir) : null;
+  const gitDirty = isGitRepo ? await readGitDirty(dir) : null;
   const lastModified = await readLastModified(dir, ecosystems);
+  const description = await extractDescription(dir, ecosystems, entries);
+  const source = inferSource(gitRemote);
 
   return {
     path: dir,
     name: path.basename(dir),
+    description,
     ecosystems,
     gitRemote,
+    isGitRepo,
+    source,
+    gitDirty,
     lastModified,
     cleanables,
     cleanableSize
@@ -188,6 +209,88 @@ async function readGitRemote(dir: string): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+/** 为已知是 git 仓库的项目检测未提交修改 */
+async function readGitDirty(dir: string): Promise<boolean | null> {
+  try {
+    const { stdout } = await execAsync('git status --porcelain', {
+      cwd: dir,
+      timeout: 3000
+    });
+    return stdout.trim().length > 0;
+  } catch {
+    return null;
+  }
+}
+
+/** 根据 remote URL 判定来源 */
+function inferSource(remote: string | null): ProjectSource {
+  if (!remote) return 'local';
+  if (/github\.com[:/]/i.test(remote)) return 'github';
+  return 'remote';
+}
+
+/**
+ * 提取项目一句话描述：
+ * 1. 优先 package.json 的 description 字段
+ * 2. 其次 README.md 的首个非空、非标题行
+ * 未来可接入 LLM 重写。
+ */
+async function extractDescription(
+  dir: string,
+  ecosystems: EcosystemId[],
+  entries: import('node:fs').Dirent[]
+): Promise<string | null> {
+  if (ecosystems.includes('node')) {
+    const desc = await readPackageJsonDescription(path.join(dir, 'package.json'));
+    if (desc) return desc;
+  }
+  // README 匹配不区分大小写，同时兼容 .md/.markdown/无后缀
+  const readme = entries.find(
+    (e) => e.isFile() && /^readme(\.(md|markdown|txt))?$/i.test(e.name)
+  );
+  if (readme) {
+    const desc = await readReadmeFirstParagraph(path.join(dir, readme.name));
+    if (desc) return desc;
+  }
+  return null;
+}
+
+async function readPackageJsonDescription(file: string): Promise<string | null> {
+  try {
+    const raw = await fs.readFile(file, 'utf8');
+    const json = JSON.parse(raw) as { description?: unknown };
+    if (typeof json.description === 'string' && json.description.trim()) {
+      return json.description.trim().slice(0, 200);
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
+async function readReadmeFirstParagraph(file: string): Promise<string | null> {
+  try {
+    const raw = await fs.readFile(file, 'utf8');
+    const lines = raw.split(/\r?\n/);
+    for (const line of lines) {
+      const t = line.trim();
+      if (!t) continue;
+      if (t.startsWith('#')) continue; // 跳过标题
+      if (t.startsWith('![')) continue; // 跳过顶部图片/徽章
+      if (t.startsWith('<')) continue; // 跳过 HTML 标签
+      // 清除常见 markdown 修饰
+      const cleaned = t
+        .replace(/^>\s*/, '')
+        .replace(/\*\*(.+?)\*\*/g, '$1')
+        .replace(/`([^`]+)`/g, '$1');
+      if (cleaned) return cleaned.slice(0, 200);
+    }
+  } catch {
+    // ignore
+  }
+  return null;
 }
 
 /** 取项目根 marker 文件的最近 mtime 作为活跃度参考 */

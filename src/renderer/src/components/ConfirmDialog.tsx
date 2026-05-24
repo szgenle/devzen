@@ -1,6 +1,8 @@
+import type { ReactNode } from 'react';
+
 interface Props {
   title: string;
-  message: string;
+  message: ReactNode;
   confirmText?: string;
   confirmDisabled?: boolean;
   onConfirm: () => void;
