@@ -124,17 +124,81 @@ button.ghost-btn:hover:not(:disabled) {
 
 /* ---------------- Home screen ---------------- */
 .home-screen {
+  position: relative;
   height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 40px 24px;
+  overflow: hidden;
+  /* 多层径向色斑铺底：顶部蓝色光 + 左上青蓝 + 右下紫色 + 右上一缕暖色，让背景有层次 */
   background:
-    radial-gradient(1200px 600px at 50% -10%, rgba(47, 129, 247, 0.12), transparent 60%),
+    radial-gradient(1200px 600px at 50% -10%, rgba(47, 129, 247, 0.16), transparent 60%),
+    radial-gradient(720px 520px at 6% 18%, rgba(56, 189, 248, 0.14), transparent 65%),
+    radial-gradient(780px 560px at 96% 92%, rgba(167, 89, 247, 0.18), transparent 65%),
+    radial-gradient(520px 380px at 92% 8%, rgba(210, 153, 34, 0.10), transparent 70%),
     var(--bg);
   -webkit-app-region: drag;
 }
+/* 淡网格底纹，边缘用径向蒙版渐隐，避免抢主体 */
+.home-screen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 48px 48px, 48px 48px;
+  -webkit-mask-image: radial-gradient(ellipse at center, #000 35%, transparent 88%);
+  mask-image: radial-gradient(ellipse at center, #000 35%, transparent 88%);
+}
+/* 漂浮装饰形状：几个圆点 + 斜向细线，营造科技感 */
+.home-screen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    /* 几个发光小圆点（不同色系） */
+    radial-gradient(circle at 12% 28%, rgba(47, 129, 247, 0.55) 0 5px, transparent 7px),
+    radial-gradient(circle at 86% 22%, rgba(46, 160, 67, 0.50) 0 4px, transparent 6px),
+    radial-gradient(circle at 22% 82%, rgba(210, 153, 34, 0.45) 0 4px, transparent 6px),
+    radial-gradient(circle at 78% 78%, rgba(218, 54, 51, 0.40) 0 5px, transparent 7px),
+    radial-gradient(circle at 50% 92%, rgba(167, 89, 247, 0.45) 0 4px, transparent 6px),
+    /* 两条斜向高光线 */
+    linear-gradient(115deg, transparent 18%, rgba(47, 129, 247, 0.10) 19%, transparent 20%),
+    linear-gradient(115deg, transparent 78%, rgba(167, 89, 247, 0.10) 79%, transparent 80%);
+  -webkit-mask-image: radial-gradient(ellipse at center, #000 30%, transparent 95%);
+  mask-image: radial-gradient(ellipse at center, #000 30%, transparent 95%);
+}
+/* 浅色主题下：底纹与色斑都需降低对比，避免白底上太花 */
+[data-theme="light"] .home-screen {
+  background:
+    radial-gradient(1200px 600px at 50% -10%, rgba(9, 105, 218, 0.10), transparent 60%),
+    radial-gradient(720px 520px at 6% 18%, rgba(56, 189, 248, 0.10), transparent 65%),
+    radial-gradient(780px 560px at 96% 92%, rgba(167, 89, 247, 0.10), transparent 65%),
+    radial-gradient(520px 380px at 92% 8%, rgba(210, 153, 34, 0.08), transparent 70%),
+    var(--bg);
+}
+[data-theme="light"] .home-screen::before {
+  background-image:
+    linear-gradient(to right, rgba(31, 35, 40, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(31, 35, 40, 0.06) 1px, transparent 1px);
+}
+[data-theme="light"] .home-screen::after {
+  background:
+    radial-gradient(circle at 12% 28%, rgba(9, 105, 218, 0.45) 0 5px, transparent 7px),
+    radial-gradient(circle at 86% 22%, rgba(26, 127, 55, 0.40) 0 4px, transparent 6px),
+    radial-gradient(circle at 22% 82%, rgba(154, 103, 0, 0.40) 0 4px, transparent 6px),
+    radial-gradient(circle at 78% 78%, rgba(207, 34, 46, 0.35) 0 5px, transparent 7px),
+    radial-gradient(circle at 50% 92%, rgba(130, 80, 223, 0.40) 0 4px, transparent 6px),
+    linear-gradient(115deg, transparent 18%, rgba(9, 105, 218, 0.08) 19%, transparent 20%),
+    linear-gradient(115deg, transparent 78%, rgba(130, 80, 223, 0.08) 79%, transparent 80%);
+}
 .home-card {
+  position: relative;
+  z-index: 1;
   width: 100%;
   max-width: 560px;
   background: var(--bg-elev);
@@ -207,6 +271,8 @@ button.ghost-btn:hover:not(:disabled) {
   padding: 48px 24px;
 }
 .home-list-card {
+  position: relative;
+  z-index: 1;
   width: 100%;
   max-width: 720px;
   margin: 0 auto;
