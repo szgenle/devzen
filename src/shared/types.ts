@@ -36,6 +36,16 @@ export interface CleanableDir {
  */
 export type ProjectSource = 'github' | 'remote' | 'local';
 
+/** 识别到的远程仓库托管商 */
+export type RemoteProvider =
+  | 'github'
+  | 'gitlab'
+  | 'bitbucket'
+  | 'gitee'
+  | 'codeup'
+  | 'coding'
+  | 'unknown';
+
 /** 扫描得到的项目 */
 export interface ProjectInfo {
   /** 项目根目录绝对路径 */
@@ -52,6 +62,8 @@ export interface ProjectInfo {
   isGitRepo: boolean;
   /** 项目来源分类，决定删除时的提醒强度 */
   source: ProjectSource;
+  /** 识别到的远程托管商列表（可能有多个 remote 对应不同平台） */
+  remoteProviders: RemoteProvider[];
   /** 是否有未提交的修改；非 git 仓库或检测失败为 null */
   gitDirty: boolean | null;
   /** 最近修改时间（毫秒时间戳，取 marker 文件 mtime） */

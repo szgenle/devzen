@@ -7,6 +7,7 @@ import type {
   EcosystemId,
   ProjectInfo,
   ProjectSource,
+  RemoteProvider,
   ScanProgress
 } from '@shared/types';
 import { ECOSYSTEMS, SKIP_DIRS, SYSTEM_SKIP_DIRS } from './markers.js';
@@ -125,6 +126,7 @@ async function buildProjectInfo(
   const lastModified = await readLastModified(dir, ecosystems);
   const description = await extractDescription(dir, ecosystems, entries);
   const source = inferSource(allRemoteUrls);
+  const remoteProviders = detectProviders(allRemoteUrls);
 
   return {
     path: dir,
@@ -134,6 +136,7 @@ async function buildProjectInfo(
     gitRemote,
     isGitRepo,
     source,
+    remoteProviders,
     gitDirty,
     lastModified,
     cleanables,
@@ -249,6 +252,36 @@ function inferSource(remoteUrls: string[]): ProjectSource {
   if (remoteUrls.length === 0) return 'local';
   if (remoteUrls.some((url) => /github\.com[:/]/i.test(url))) return 'github';
   return 'remote';
+}
+
+/** 已知托管商的匹配规则 */
+const PROVIDER_PATTERNS: Array<{ id: RemoteProvider; pattern: RegExp }> = [
+  { id: 'github', pattern: /github\.com[:/]/i },
+  { id: 'gitlab', pattern: /gitlab\.com[:/]/i },
+  { id: 'bitbucket', pattern: /bitbucket\.org[:/]/i },
+  { id: 'gitee', pattern: /gitee\.com[:/]/i },
+  { id: 'codeup', pattern: /codeup\.aliyun\.com[:/]/i },
+  { id: 'coding', pattern: /coding\.net[:/]/i }
+];
+
+/** 从所有 remote URL 中识别具体的托管商列表（去重、保序） */
+function detectProviders(remoteUrls: string[]): RemoteProvider[] {
+  if (remoteUrls.length === 0) return [];
+  const found = new Set<RemoteProvider>();
+  for (const url of remoteUrls) {
+    let matched = false;
+    for (const { id, pattern } of PROVIDER_PATTERNS) {
+      if (pattern.test(url)) {
+        found.add(id);
+        matched = true;
+        break;
+      }
+    }
+    if (!matched) found.add('unknown');
+  }
+  // 去掉 unknown，如果同时有具名提供商的话
+  if (found.size > 1) found.delete('unknown');
+  return Array.from(found);
 }
 
 /**

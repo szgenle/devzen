@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { ProjectInfo, ProjectSource } from '@shared/types';
+import type { ProjectInfo, RemoteProvider } from '@shared/types';
 import type { ViewMode } from '../App';
 import { formatRelative, shortenPath } from '../utils/format';
 import {
@@ -17,11 +17,19 @@ interface Props {
   onSelectProject: (p: ProjectInfo) => void;
 }
 
-const SOURCE_META: Record<ProjectSource, { label: string; title: string; cls: string }> = {
+/** 每个远程提供商的显示信息 */
+const PROVIDER_META: Record<RemoteProvider, { label: string; title: string; cls: string }> = {
   github: { label: 'GitHub', title: '来自 GitHub，可重新 clone', cls: 'tag-source-github' },
-  remote: { label: '远程仓库', title: '有远程备份', cls: 'tag-source-remote' },
-  local: { label: '仅本地', title: '没有远程备份', cls: 'tag-source-local' }
+  gitlab: { label: 'GitLab', title: '来自 GitLab，可重新 clone', cls: 'tag-source-remote' },
+  bitbucket: { label: 'Bitbucket', title: '来自 Bitbucket，可重新 clone', cls: 'tag-source-remote' },
+  gitee: { label: 'Gitee', title: '来自 Gitee，可重新 clone', cls: 'tag-source-remote' },
+  codeup: { label: 'Codeup', title: '来自阿里云 Codeup，可重新 clone', cls: 'tag-source-remote' },
+  coding: { label: 'Coding', title: '来自腾讯云 Coding，可重新 clone', cls: 'tag-source-remote' },
+  unknown: { label: '远程仓库', title: '有远程备份', cls: 'tag-source-remote' }
 };
+
+/** 仅本地项目的兜底标签 */
+const LOCAL_META = { label: '仅本地', title: '没有远程备份', cls: 'tag-source-local' };
 
 const ECO_LABELS: Record<string, string> = {
   node: 'Node',
@@ -115,16 +123,21 @@ interface RowProps {
 }
 
 function OverviewRow({ project, onReveal, onSelect }: RowProps) {
-  const sourceMeta = SOURCE_META[project.source];
+  const sourceTags =
+    project.remoteProviders.length > 0
+      ? project.remoteProviders.map((p) => PROVIDER_META[p])
+      : [LOCAL_META];
 
   return (
     <div className="overview-row" onClick={onSelect} title="查看详情 / 修改分类">
       <div className="overview-row-main">
         <div className="overview-name-row">
           <span className="project-name">{project.name}</span>
-          <span className={`tag ${sourceMeta.cls}`} title={sourceMeta.title}>
-            {sourceMeta.label}
-          </span>
+          {sourceTags.map((meta) => (
+            <span key={meta.label} className={`tag ${meta.cls}`} title={meta.title}>
+              {meta.label}
+            </span>
+          ))}
           {project.ecosystems.map((e) => (
             <span key={e} className={`tag tag-${e}`}>
               {ECO_LABELS[e] ?? e}
@@ -160,15 +173,20 @@ function OverviewRow({ project, onReveal, onSelect }: RowProps) {
 }
 
 function OverviewCard({ project, onReveal, onSelect }: RowProps) {
-  const sourceMeta = SOURCE_META[project.source];
+  const sourceTags =
+    project.remoteProviders.length > 0
+      ? project.remoteProviders.map((p) => PROVIDER_META[p])
+      : [LOCAL_META];
 
   return (
     <div className="overview-card" onClick={onSelect} title="查看详情 / 修改分类">
       <div className="overview-card-header">
         <span className="project-name">{project.name}</span>
-        <span className={`tag ${sourceMeta.cls}`} title={sourceMeta.title}>
-          {sourceMeta.label}
-        </span>
+        {sourceTags.map((meta) => (
+          <span key={meta.label} className={`tag ${meta.cls}`} title={meta.title}>
+            {meta.label}
+          </span>
+        ))}
       </div>
       <div className="overview-card-tags">
         {project.ecosystems.map((e) => (

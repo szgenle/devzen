@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { ProjectInfo, ProjectSource } from '@shared/types';
+import type { ProjectInfo, RemoteProvider } from '@shared/types';
 import { formatBytes, formatRelative, shortenPath } from '../utils/format';
 import {
   type Category,
@@ -19,11 +19,18 @@ interface Props {
   onReveal: (path: string) => void;
 }
 
-const SOURCE_META: Record<ProjectSource, { label: string; title: string }> = {
+/** 每个远程提供商的显示信息 */
+const PROVIDER_META: Record<RemoteProvider, { label: string; title: string }> = {
   github: { label: 'GitHub', title: '来自 GitHub，可重新 clone' },
-  remote: { label: '远程仓库', title: '有远程备份（GitLab/Codeup 等）' },
-  local: { label: '仅本地', title: '没有远程备份，删了就没了' }
+  gitlab: { label: 'GitLab', title: '来自 GitLab，可重新 clone' },
+  bitbucket: { label: 'Bitbucket', title: '来自 Bitbucket，可重新 clone' },
+  gitee: { label: 'Gitee', title: '来自 Gitee，可重新 clone' },
+  codeup: { label: 'Codeup', title: '来自阿里云 Codeup，可重新 clone' },
+  coding: { label: 'Coding', title: '来自腾讯云 Coding，可重新 clone' },
+  unknown: { label: '远程仓库', title: '有远程备份' }
 };
+
+const LOCAL_META = { label: '仅本地', title: '没有远程备份，删了就没了' };
 
 const ECO_LABELS: Record<string, string> = {
   node: 'Node',
@@ -183,8 +190,18 @@ export function ProjectDetailPanel({
           <div className="detail-label">基本信息</div>
           <dl className="detail-meta">
             <dt>来源</dt>
-            <dd title={SOURCE_META[project.source].title}>
-              {SOURCE_META[project.source].label}
+            <dd>
+              {project.remoteProviders.length > 0
+                ? project.remoteProviders.map((p) => {
+                    const meta = PROVIDER_META[p];
+                    return (
+                      <span key={p} className="detail-provider" title={meta.title}>
+                        {meta.label}
+                      </span>
+                    );
+                  })
+                : <span title={LOCAL_META.title}>{LOCAL_META.label}</span>
+              }
               {project.gitRemote && (
                 <>
                   <span className="muted"> · </span>

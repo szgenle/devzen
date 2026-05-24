@@ -1278,6 +1278,10 @@ button.ghost-btn:hover:not(:disabled) {
   font-size: 11px;
   color: var(--text-muted);
 }
+.detail-provider {
+  margin-right: 6px;
+  font-weight: 500;
+}
 .detail-warn {
   color: var(--warning);
 }
