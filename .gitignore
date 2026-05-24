@@ -34,3 +34,6 @@ data/
 *.local
 local/
 .*/
+# 例外：CI / Issue 模板需要进仓库
+!.github/
+!.gitignore

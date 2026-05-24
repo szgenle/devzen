@@ -1,10 +1,30 @@
 {
   "name": "devzen",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": true,
-  "description": "面向开发者的本地项目管理工具：扫描 Dev 目录、清理构建产物、安全卸载 GitHub 项目",
+  "description": "An inventory tool for every dev project on your machine — scan, dedupe, clean, archive (macOS).",
   "author": "szgenle",
   "license": "MIT",
+  "homepage": "https://github.com/szgenle/devzen#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/szgenle/devzen.git"
+  },
+  "bugs": {
+    "url": "https://github.com/szgenle/devzen/issues"
+  },
+  "keywords": [
+    "electron",
+    "macos",
+    "developer-tools",
+    "project-management",
+    "cleanup",
+    "node-modules",
+    "disk-space",
+    "ai-coding",
+    "react",
+    "typescript"
+  ],
   "main": "out/main/index.js",
   "type": "module",
   "scripts": {

@@ -1,8 +1,18 @@
 # DevZen
 
-> 让使用 AI 编程的人，对自己的项目一目了然。
+**简体中文** | [English](./README.en.md)
 
-先看见，再行动。DevZen 不是另一个“清理工具”，而是你本地项目的清单：哪些项目、来自哪里、占了多少空间、哪些可以安全删除。
+> 你本地所有项目的清单：扫描、去重、清理、归档。
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![Platform](https://img.shields.io/badge/platform-macOS-lightgrey.svg)](#-平台支持)
+[![Electron](https://img.shields.io/badge/Electron-33-47848F.svg?logo=electron)](https://www.electronjs.org/)
+
+先看见，再行动。DevZen 不是另一个"清理工具"，而是你本地项目的清单：哪些项目、来自哪里、占了多少空间、哪些可以安全删除。
+
+## 🖥 平台支持
+
+当前仅支持 **macOS**。原因：项目内大量使用 macOS LaunchServices（`open -a`）启动编辑器/终端、Finder 集成等。Windows / Linux 暂不在 MVP 范围内，欢迎 PR。
 
 ## ✨ 当前 MVP
 
@@ -15,7 +25,7 @@
 
 ## 👥 目标用户
 
-非计算机科班出身、但通过 AI 编程开始写代码和接触 GitHub 的人：他们不一定知道 `node_modules` 能删、不一定记得自己 clone 过哪些项目、也可能用 AI 生成了项目但还没推到 GitHub。DevZen 由一名有 20 年经验的开发者发起，"项目多且乱" 这个痛点他自己也同样需要解决。
+所有受困于"项目多且乱"的开发者——尤其是非计算机科班出身、通过 AI 编程开始写代码和接触 GitHub 的新手：他们不一定知道 `node_modules` 能删、不一定记得自己 clone 过哪些项目、也可能用 AI 生成了项目但还没推到 GitHub。DevZen 也是作者自用的工具——"项目多且乱"这个痛点他自己也同样需要解决。
 
 ## 🧱 技术栈
 
@@ -78,3 +88,9 @@ src/
 ## License
 
 MIT © szgenle
+
+详见 [LICENSE](./LICENSE)。
+
+## 🤝 贡献
+
+欢迎通过 Issue 反馈问题或提交 PR，贡献规范见 [CONTRIBUTING.md](./CONTRIBUTING.md)，版本变更记录见 [CHANGELOG.md](./CHANGELOG.md)。
