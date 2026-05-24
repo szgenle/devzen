@@ -483,6 +483,88 @@ button.ghost-btn:hover:not(:disabled) {
   padding: 0;
 }
 
+/* ---------------- Filter bar (概览页筛选) ---------------- */
+.filter-bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.filter-search-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.filter-search-input {
+  flex: 1;
+  padding: 6px 12px;
+  font-size: 13px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-elev);
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.filter-search-input:focus {
+  border-color: var(--accent);
+}
+.filter-search-input::placeholder {
+  color: var(--text-muted);
+}
+.filter-clear-btn {
+  font-size: 12px;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+.filter-clear-btn:hover {
+  color: var(--accent);
+}
+.filter-chips-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.filter-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-right: 2px;
+}
+.filter-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--border);
+  margin: 0 4px;
+}
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  font-size: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.filter-chip:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+.filter-chip.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
 /* ---------------- Overview list (概览页) ---------------- */
 .overview-list {
   display: flex;
@@ -1256,6 +1338,96 @@ button.ghost-btn:hover:not(:disabled) {
   border-color: var(--accent);
 }
 .category-new-form button.primary {
+  padding: 3px 10px;
+  font-size: 12px;
+  border-radius: 999px;
+}
+
+/* Tags */
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.tag-empty {
+  font-size: 12px;
+}
+.tag-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: rgba(47, 129, 247, 0.12);
+  color: var(--accent);
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  line-height: 1;
+}
+.tag-pill-name {
+  font-weight: 500;
+}
+.tag-pill-remove {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px;
+  opacity: 0.6;
+}
+.tag-pill-remove:hover {
+  opacity: 1;
+}
+.tag-add-select {
+  font-size: 12px;
+  padding: 3px 8px;
+  border: 1px dashed var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  outline: none;
+}
+.tag-add-select:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+.tag-new-btn {
+  font-size: 12px;
+  padding: 3px 10px;
+  border: 1px dashed var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.tag-new-btn:hover {
+  color: var(--text);
+  border-color: var(--accent);
+  background: rgba(47, 129, 247, 0.08);
+}
+.tag-new-form {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.tag-new-input {
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font: inherit;
+  font-size: 12px;
+  outline: none;
+  width: 100px;
+}
+.tag-new-input:focus {
+  border-color: var(--accent);
+}
+.tag-new-form button.primary {
   padding: 3px 10px;
   font-size: 12px;
   border-radius: 999px;

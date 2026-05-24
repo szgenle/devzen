@@ -115,6 +115,28 @@ const zh: Record<string, string> = {
   detailProjectInfo: '项目详情',
   detailTotal: '· 共',
 
+  // --- 筛选 ---
+  filterSearch: '搜索项目名或描述…',
+  filterCategory: '分类',
+  filterEcosystem: '生态',
+  filterSource: '来源',
+  filterAll: '全部',
+  filterLocal: '仅本地',
+  filterRemote: '远程',
+  filterGithub: 'GitHub',
+  filterClear: '清除筛选',
+  filterResultCount: '{count} 个项目匹配',
+  filterNoResults: '没有匹配的项目，试试调整筛选条件。',
+  filterTag: '标签',
+
+  // --- 标签 ---
+  tagSectionTitle: '标签',
+  tagEmpty: '暂无标签',
+  tagAdd: '添加标签',
+  tagCreate: '新建标签',
+  tagPlaceholder: '输入标签名…',
+  tagDeleteConfirm: '删除标签「{name}」？所有项目的该标签会被同时移除。',
+
   // --- 概览 ---
   overviewEmpty: '当前目录下没有识别到项目。可以试试在首页换个目录或重新扫描。',
   overviewProjectCount: '个项目',
@@ -238,6 +260,26 @@ const en: Record<string, string> = {
   detailDeleteCategoryConfirm: 'Delete custom category "{name}"?\nProjects under it will revert to auto-inference.',
   detailProjectInfo: 'Project Details',
   detailTotal: '· total',
+
+  filterSearch: 'Search by name or description…',
+  filterCategory: 'Category',
+  filterEcosystem: 'Ecosystem',
+  filterSource: 'Source',
+  filterAll: 'All',
+  filterLocal: 'Local only',
+  filterRemote: 'Remote',
+  filterGithub: 'GitHub',
+  filterClear: 'Clear filters',
+  filterResultCount: '{count} projects matched',
+  filterNoResults: 'No projects match current filters. Try adjusting.',
+  filterTag: 'Tag',
+
+  tagSectionTitle: 'Tags',
+  tagEmpty: 'No tags yet',
+  tagAdd: 'Add tag',
+  tagCreate: 'New tag',
+  tagPlaceholder: 'Tag name…',
+  tagDeleteConfirm: 'Delete tag "{name}"? It will be removed from all projects.',
 
   overviewEmpty: 'No projects found in this directory. Try changing directory or rescanning from the home screen.',
   overviewProjectCount: 'projects',

@@ -9,6 +9,7 @@ import { ResultsHeader } from './components/ResultsHeader';
 import { ActionBar } from './components/ActionBar';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { SettingsScreen } from './components/SettingsScreen';
+import { FilterBar, EMPTY_FILTER, applyFilter, isFilterActive, type FilterState } from './components/FilterBar';
 import { formatBytes } from './utils/format';
 import {
   loadHistory,
@@ -25,6 +26,15 @@ import {
   type Category,
   type CategoryStore
 } from './utils/categories';
+import {
+  loadTagStore,
+  createTag,
+  deleteTag,
+  addTagToProject,
+  removeTagFromProject,
+  type Tag,
+  type TagStore
+} from './utils/tags';
 import {
   loadPreferences,
   savePreferences,
@@ -63,6 +73,8 @@ export function App() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   // 项目分类存档（内置分类 + 自定义分类 + 项目分配）
   const [categoryStore, setCategoryStore] = useState<CategoryStore>(() => loadStore());
+  // 项目标签存档（标签定义 + 项目关联）
+  const [tagStore, setTagStore] = useState<TagStore>(() => loadTagStore());
   // 概览页视图模式：列表 / 卡片
   const [viewMode, setViewMode] = useState<ViewMode>(loadViewMode);
   // 当前打开详情侧边栏的项目；null 表示未打开
@@ -70,6 +82,8 @@ export function App() {
   // 用户偏好设置（主题 / 语言）
   const [prefs, setPrefs] = useState(() => loadPreferences());
   const t = useMemo(() => getMessages(prefs.lang), [prefs.lang]);
+  // 概览页筛选状态
+  const [filter, setFilter] = useState<FilterState>(EMPTY_FILTER);
 
   // 应用主题到 <html> 标签
   useEffect(() => {
@@ -107,6 +121,7 @@ export function App() {
     setProjects([]);
     setSelected(new Set());
     setLastResults(null);
+    setFilter(EMPTY_FILTER);
     setProgress({ scannedDirs: 0, foundProjects: 0, currentPath: rootDir });
     try {
       const list = await window.devzen.scanProjects(rootDir);
@@ -225,12 +240,42 @@ export function App() {
     setCategoryStore((prev) => removeCustomCategory(id, prev));
   }, []);
 
+  // ---------------- 标签管理 ----------------
+  const handleCreateTag = useCallback((name: string): Tag => {
+    let created: Tag | null = null;
+    setTagStore((prev) => {
+      const { store, tag } = createTag(name, prev);
+      created = tag;
+      return store;
+    });
+    return created as unknown as Tag;
+  }, []);
+
+  const handleDeleteTag = useCallback((id: string) => {
+    setTagStore((prev) => deleteTag(id, prev));
+  }, []);
+
+  const handleAddTagToProject = useCallback((p: ProjectInfo, tagId: string) => {
+    setTagStore((prev) => addTagToProject(p.path, tagId, prev));
+  }, []);
+
+  const handleRemoveTagFromProject = useCallback((p: ProjectInfo, tagId: string) => {
+    setTagStore((prev) => removeTagFromProject(p.path, tagId, prev));
+  }, []);
+
   // 详情面板要展示的是当前 projects 列表里的最新数据，
   // 防止外部状态变更后面板里还指着旧引用。
   const detailLatest = useMemo<ProjectInfo | null>(() => {
     if (!detailProject) return null;
     return projects.find((p) => p.path === detailProject.path) ?? detailProject;
   }, [detailProject, projects]);
+
+  // 概览页经过筛选后的项目列表
+  const filteredProjects = useMemo(
+    () => applyFilter(projects, filter, categoryStore, tagStore),
+    [projects, filter, categoryStore, tagStore]
+  );
+  const filterActive = isFilterActive(filter);
 
   const totalCleanable = useMemo(
     () => projects.reduce((s, p) => s + p.cleanableSize, 0),
@@ -357,14 +402,28 @@ export function App() {
 
           <main className="main">
             {resultsTab === 'overview' ? (
-              <OverviewList
-                projects={projects}
-                categoryStore={categoryStore}
-                viewMode={viewMode}
-                t={t}
-                onReveal={(p: string) => window.devzen.revealInFinder(p)}
-                onSelectProject={(p: ProjectInfo) => setDetailProject(p)}
-              />
+              <>
+                <FilterBar
+                  projects={projects}
+                  filter={filter}
+                  categoryStore={categoryStore}
+                  tagStore={tagStore}
+                  t={t}
+                  onChange={setFilter}
+                />
+                {filterActive && filteredProjects.length === 0 ? (
+                  <div className="overview-empty muted">{t.filterNoResults}</div>
+                ) : (
+                  <OverviewList
+                    projects={filteredProjects}
+                    categoryStore={categoryStore}
+                    viewMode={viewMode}
+                    t={t}
+                    onReveal={(p: string) => window.devzen.revealInFinder(p)}
+                    onSelectProject={(p: ProjectInfo) => setDetailProject(p)}
+                  />
+                )}
+              </>
             ) : (
               <CleanupList
                 projects={projects}
@@ -396,12 +455,17 @@ export function App() {
       <ProjectDetailPanel
         project={detailLatest}
         categoryStore={categoryStore}
+        tagStore={tagStore}
         t={t}
         onClose={() => setDetailProject(null)}
         onAssignCategory={handleAssignCategory}
         onUnassignCategory={handleUnassignCategory}
         onAddCategory={handleAddCategory}
         onRemoveCategory={handleRemoveCategory}
+        onAddTagToProject={handleAddTagToProject}
+        onRemoveTagFromProject={handleRemoveTagFromProject}
+        onCreateTag={handleCreateTag}
+        onDeleteTag={handleDeleteTag}
         onReveal={(p) => window.devzen.revealInFinder(p)}
       />
 

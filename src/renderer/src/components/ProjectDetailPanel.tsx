@@ -7,17 +7,23 @@ import {
   getAllCategories,
   getProjectCategoryId
 } from '../utils/categories';
+import { type Tag, type TagStore, getAllTags, getProjectTags } from '../utils/tags';
 import type { Messages } from '../utils/i18n';
 
 interface Props {
   project: ProjectInfo | null;
   categoryStore: CategoryStore;
+  tagStore: TagStore;
   t: Messages;
   onClose: () => void;
   onAssignCategory: (project: ProjectInfo, categoryId: string) => void;
   onUnassignCategory: (project: ProjectInfo) => void;
   onAddCategory: (name: string) => Category;
   onRemoveCategory: (id: string) => void;
+  onAddTagToProject: (project: ProjectInfo, tagId: string) => void;
+  onRemoveTagFromProject: (project: ProjectInfo, tagId: string) => void;
+  onCreateTag: (name: string) => Tag;
+  onDeleteTag: (id: string) => void;
   onReveal: (path: string) => void;
 }
 
@@ -55,23 +61,32 @@ const ECO_LABELS: Record<string, string> = {
 export function ProjectDetailPanel({
   project,
   categoryStore,
+  tagStore,
   t,
   onClose,
   onAssignCategory,
   onUnassignCategory,
   onAddCategory,
   onRemoveCategory,
+  onAddTagToProject,
+  onRemoveTagFromProject,
+  onCreateTag,
+  onDeleteTag,
   onReveal
 }: Props) {
   // 受控显隐：项目存在时打开，便于做退场动画
   const open = project != null;
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
+  const [creatingTag, setCreatingTag] = useState(false);
+  const [newTagName, setNewTagName] = useState('');
 
   // 切换不同项目时收起新建态，避免输入残留
   useEffect(() => {
     setCreating(false);
     setNewName('');
+    setCreatingTag(false);
+    setNewTagName('');
   }, [project?.path]);
 
   // 关闭时按 ESC
@@ -184,6 +199,93 @@ export function ProjectDetailPanel({
                 {t.detailNewCategory}
               </button>
             )}
+          </div>
+        </section>
+
+        <section className="detail-section">
+          <div className="detail-label">{t.tagSectionTitle}</div>
+          <div className="tag-list">
+            {(() => {
+              const projectTags = getProjectTags(project.path, tagStore);
+              const allAvailable = getAllTags(tagStore);
+              const projectTagIds = new Set(projectTags.map((tg) => tg.id));
+              const unassigned = allAvailable.filter((tg) => !projectTagIds.has(tg.id));
+              return (
+                <>
+                  {projectTags.length === 0 && !creatingTag && (
+                    <span className="muted tag-empty">{t.tagEmpty}</span>
+                  )}
+                  {projectTags.map((tg) => (
+                    <span key={tg.id} className="tag-pill">
+                      <span className="tag-pill-name">{tg.name}</span>
+                      <button
+                        className="tag-pill-remove"
+                        onClick={() => onRemoveTagFromProject(project, tg.id)}
+                        title={t.remove}
+                        aria-label={t.remove}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                  {unassigned.length > 0 && !creatingTag && (
+                    <select
+                      className="tag-add-select"
+                      value=""
+                      onChange={(e) => {
+                        if (e.target.value) onAddTagToProject(project, e.target.value);
+                      }}
+                    >
+                      <option value="" disabled>
+                        + {t.tagAdd}
+                      </option>
+                      {unassigned.map((tg) => (
+                        <option key={tg.id} value={tg.id}>
+                          {tg.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  {creatingTag ? (
+                    <form
+                      className="tag-new-form"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        const name = newTagName.trim();
+                        if (!name) return;
+                        const tag = onCreateTag(name);
+                        onAddTagToProject(project, tag.id);
+                        setNewTagName('');
+                        setCreatingTag(false);
+                      }}
+                    >
+                      <input
+                        autoFocus
+                        className="tag-new-input"
+                        value={newTagName}
+                        placeholder={t.tagPlaceholder}
+                        maxLength={20}
+                        onChange={(e) => setNewTagName(e.target.value)}
+                        onBlur={() => {
+                          if (!newTagName.trim()) setCreatingTag(false);
+                        }}
+                      />
+                      <button type="submit" className="primary" disabled={!newTagName.trim()}>
+                        {t.add}
+                      </button>
+                    </form>
+                  ) : (
+                    <button
+                      className="tag-new-btn"
+                      onClick={() => setCreatingTag(true)}
+                      title={t.tagCreate}
+                    >
+                      {t.tagCreate}
+                    </button>
+                  )}
+                </>
+              );
+            })()}
           </div>
         </section>
 
