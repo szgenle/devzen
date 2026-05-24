@@ -4,7 +4,9 @@ import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
 import type {
   CleanableDir,
+  DuplicateGroup,
   EcosystemId,
+  ProjectDetail,
   ProjectInfo,
   ProjectSource,
   RemoteProvider,
@@ -108,6 +110,8 @@ export async function scanProjects(
   await walk(rootDir, 0);
   // 按可清理大小倒序
   projects.sort((a, b) => b.cleanableSize - a.cleanableSize);
+  // 重复项目分组：基于 remote URL 标准化后匹配
+  markDuplicateGroups(projects);
   return projects;
 }
 
@@ -211,7 +215,8 @@ async function buildProjectInfo(
     gitDirty,
     lastModified,
     cleanables,
-    cleanableSize
+    cleanableSize,
+    duplicateGroup: null
   };
 }
 
@@ -413,7 +418,6 @@ function detectProviders(remoteUrls: string[]): RemoteProvider[] {
  * 提取项目一句话描述：
  * 1. 优先 package.json 的 description 字段
  * 2. 其次 README.md 的首个非空、非标题行
- * 未来可接入 LLM 重写。
  */
 async function extractDescription(
   dir: string,
@@ -495,4 +499,174 @@ async function readLastModified(
     }
   }
   return latest > 0 ? latest : null;
+}
+
+// ─────────────── 重复项目检测 ───────────────
+
+/**
+ * 标准化 git remote URL，用于重复项目分组。
+ * 将 SSH 和 HTTPS 格式统一为 "host/user/repo" 形式。
+ */
+export function normalizeRemoteUrl(url: string): string {
+  let s = url.trim();
+  // 去掉尾部 .git
+  if (s.endsWith('.git')) s = s.slice(0, -4);
+  // SSH 格式: git@github.com:user/repo
+  const sshMatch = s.match(/^[\w.-]+@([\w.-]+):(.*)/);
+  if (sshMatch) return `${sshMatch[1]}/${sshMatch[2]}`;
+  // HTTPS 格式: https://github.com/user/repo
+  try {
+    const u = new URL(s);
+    return `${u.host}${u.pathname}`.replace(/\/+$/, '');
+  } catch {
+    // 无法解析就原样返回
+    return s;
+  }
+}
+
+/**
+ * 对扫描完成的项目列表做重复分组后处理。
+ * 策略 1：基于 gitRemote 标准化后分组
+ * 策略 2：基于目录名相似度匹配（处理手动复制目录的场景）
+ * 组内 >= 2 个成员即标记为重复。
+ */
+export function markDuplicateGroups(projects: ProjectInfo[]): void {
+  const groups = new Map<string, ProjectInfo[]>();
+
+  // 策略 1：按 remote URL 分组
+  for (const p of projects) {
+    if (!p.gitRemote) continue;
+    const key = `remote:${normalizeRemoteUrl(p.gitRemote)}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(p);
+  }
+
+  // 策略 2：按目录名相似度分组（针对手动复制/备份的目录）
+  // 已被策略 1 命中的项目不再参与策略 2
+  const remoteGrouped = new Set<string>();
+  for (const [, members] of groups) {
+    if (members.length >= 2) {
+      for (const p of members) remoteGrouped.add(p.path);
+    }
+  }
+
+  const nameGroups = new Map<string, ProjectInfo[]>();
+  for (const p of projects) {
+    if (remoteGrouped.has(p.path)) continue;
+    const baseName = stripCopySuffix(p.name);
+    // 只有名称确实被去除了后缀的项目才参与分组（避免无后缀项目单独成组）
+    const key = `name:${baseName}`;
+    if (!nameGroups.has(key)) nameGroups.set(key, []);
+    nameGroups.get(key)!.push(p);
+  }
+  // 合并策略 2 的结果（组内 >= 2 成员即可，复制后缀本身就是强信号）
+  for (const [key, members] of nameGroups) {
+    if (members.length < 2) continue;
+    groups.set(key, members);
+  }
+
+  // 写入结果
+  for (const [groupId, members] of groups) {
+    if (members.length < 2) continue;
+    const paths = members.map((m) => m.path);
+    const group: DuplicateGroup = { groupId, members: paths };
+    for (const p of members) {
+      p.duplicateGroup = group;
+    }
+  }
+}
+
+/**
+ * 去除目录名中常见的复制/备份后缀，提取基础名称。
+ * 覆盖 macOS Finder 复制（"xxx 副本"/"xxx_副本"）、
+ * 手动后缀（"-copy"/"-backup"/"-bak"/" (2)"）等。
+ */
+export function stripCopySuffix(name: string): string {
+  return name
+    // macOS Finder 风格：xxx 副本 / xxx_副本 / xxx 副本 2
+    .replace(/[\s_]?副本[\s_]?\d*$/, '')
+    // 英文常见后缀：-copy / _copy / -backup / _backup / -bak / _bak
+    .replace(/[-_\s]?(copy|backup|bak|old)\s*\d*$/i, '')
+    // 括号编号后缀：xxx (2) / xxx（3）
+    .replace(/\s*[(\uff08]\d+[)\uff09]$/, '')
+    .trim();
+}
+
+
+// ─────────────── 项目详细信息（按需加载） ───────────────
+
+/** 获取最近一次 git commit 的时间戳（毫秒） */
+export async function readLastCommitTime(dir: string): Promise<number | null> {
+  try {
+    const { stdout } = await execAsync('git log -1 --format=%ct', {
+      cwd: dir,
+      timeout: 3000
+    });
+    const sec = parseInt(stdout.trim(), 10);
+    return isNaN(sec) ? null : sec * 1000;
+  } catch {
+    return null;
+  }
+}
+
+/** 获取本地未推送的 commit 数量 */
+export async function readUnpushedCount(dir: string): Promise<number> {
+  try {
+    // 先尝试有 upstream 的情况
+    const { stdout } = await execAsync('git rev-list @{upstream}..HEAD --count', {
+      cwd: dir,
+      timeout: 3000
+    });
+    const n = parseInt(stdout.trim(), 10);
+    return isNaN(n) ? 0 : n;
+  } catch {
+    // 没有 upstream：返回本地全部 commit 数
+    try {
+      const { stdout } = await execAsync('git rev-list HEAD --count', {
+        cwd: dir,
+        timeout: 3000
+      });
+      const n = parseInt(stdout.trim(), 10);
+      return isNaN(n) ? 0 : n;
+    } catch {
+      return 0;
+    }
+  }
+}
+
+/** 计算项目总大小（排除 .git 目录） */
+export async function readTotalSize(dir: string): Promise<number> {
+  let total = 0;
+  let entries: import('node:fs').Dirent[];
+  try {
+    entries = await fs.readdir(dir, { withFileTypes: true });
+  } catch {
+    return 0;
+  }
+  for (const e of entries) {
+    if (e.name === '.git') continue; // 排除 .git
+    if (e.isSymbolicLink()) continue;
+    const full = path.join(dir, e.name);
+    try {
+      if (e.isDirectory()) {
+        total += await dirSize(full);
+      } else if (e.isFile()) {
+        const st = await fs.stat(full);
+        total += st.size;
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return total;
+}
+
+/** 获取项目详细信息（用于重复对比视图的按需加载） */
+export async function getProjectDetail(projectPath: string): Promise<ProjectDetail> {
+  const [lastCommitTime, unpushedCount, totalSize] = await Promise.all([
+    readLastCommitTime(projectPath),
+    readUnpushedCount(projectPath),
+    readTotalSize(projectPath)
+  ]);
+  return { path: projectPath, lastCommitTime, unpushedCount, totalSize };
 }

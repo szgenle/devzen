@@ -5,6 +5,7 @@ import type {
   ArchiveResult,
   CleanResult,
   DevZenAPI,
+  ProjectDetail,
   ProjectDirtyInfo,
   ProjectInfo,
   RestoreResult,
@@ -47,7 +48,10 @@ const api: DevZenAPI = {
     ipcRenderer.invoke(IpcChannels.RestoreProject, target) as Promise<RestoreResult>,
 
   forgetArchive: (target: string) =>
-    ipcRenderer.invoke(IpcChannels.ForgetArchive, target) as Promise<void>
+    ipcRenderer.invoke(IpcChannels.ForgetArchive, target) as Promise<void>,
+
+  getProjectDetail: (target: string) =>
+    ipcRenderer.invoke(IpcChannels.GetProjectDetail, target) as Promise<ProjectDetail>
 };
 
 contextBridge.exposeInMainWorld('devzen', api);

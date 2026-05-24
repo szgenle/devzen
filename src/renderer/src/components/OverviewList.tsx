@@ -17,6 +17,7 @@ interface Props {
   t: Messages;
   onReveal: (path: string) => void;
   onSelectProject: (p: ProjectInfo) => void;
+  onCompareDuplicates: (groupId: string) => void;
 }
 
 /** 每个远程提供商的 label + 对应的 i18n title key */
@@ -52,7 +53,7 @@ interface Group {
  * 只展示"你有哪些项目"相关信息：名称、描述、来源、生态、路径。
  * 不涉及清理操作（无 checkbox、无可清理大小）。
  */
-export function OverviewList({ projects, categoryStore, viewMode, t, onReveal, onSelectProject }: Props) {
+export function OverviewList({ projects, categoryStore, viewMode, t, onReveal, onSelectProject, onCompareDuplicates }: Props) {
   const groups = useMemo<Group[]>(() => {
     const all = getAllCategories(categoryStore);
     const map = new Map<string, ProjectInfo[]>();
@@ -97,6 +98,7 @@ export function OverviewList({ projects, categoryStore, viewMode, t, onReveal, o
                   t={t}
                   onReveal={onReveal}
                   onSelect={() => onSelectProject(p)}
+                  onCompareDuplicates={onCompareDuplicates}
                 />
               ))}
             </div>
@@ -108,6 +110,7 @@ export function OverviewList({ projects, categoryStore, viewMode, t, onReveal, o
                 t={t}
                 onReveal={onReveal}
                 onSelect={() => onSelectProject(p)}
+                onCompareDuplicates={onCompareDuplicates}
               />
             ))
           )}
@@ -122,9 +125,10 @@ interface RowProps {
   t: Messages;
   onReveal: (path: string) => void;
   onSelect: () => void;
+  onCompareDuplicates: (groupId: string) => void;
 }
 
-function OverviewRow({ project, t, onReveal, onSelect }: RowProps) {
+function OverviewRow({ project, t, onReveal, onSelect, onCompareDuplicates }: RowProps) {
   const sourceTags =
     project.remoteProviders.length > 0
       ? project.remoteProviders.map((p) => {
@@ -133,11 +137,25 @@ function OverviewRow({ project, t, onReveal, onSelect }: RowProps) {
         })
       : [{ label: t.localOnly, title: t.localOnlyTitle, cls: 'tag-source-local' }];
 
+  const dupGroup = project.duplicateGroup;
+
   return (
     <div className="overview-row" onClick={onSelect} title={t.overviewViewDetail}>
       <div className="overview-row-main">
         <div className="overview-name-row">
           <span className="project-name">{project.name}</span>
+          {dupGroup && (
+            <span
+              className="tag tag-duplicate"
+              title={t.duplicateBadgeTitle.replace('{count}', String(dupGroup.members.length))}
+              onClick={(e) => {
+                e.stopPropagation();
+                onCompareDuplicates(dupGroup.groupId);
+              }}
+            >
+              {t.duplicateBadge.replace('{count}', String(dupGroup.members.length))}
+            </span>
+          )}
           {sourceTags.map((meta) => (
             <span key={meta.label} className={`tag ${meta.cls}`} title={meta.title}>
               {meta.label}
@@ -177,7 +195,7 @@ function OverviewRow({ project, t, onReveal, onSelect }: RowProps) {
   );
 }
 
-function OverviewCard({ project, t, onReveal, onSelect }: RowProps) {
+function OverviewCard({ project, t, onReveal, onSelect, onCompareDuplicates }: RowProps) {
   const sourceTags =
     project.remoteProviders.length > 0
       ? project.remoteProviders.map((p) => {
@@ -186,10 +204,24 @@ function OverviewCard({ project, t, onReveal, onSelect }: RowProps) {
         })
       : [{ label: t.localOnly, title: t.localOnlyTitle, cls: 'tag-source-local' }];
 
+  const dupGroup = project.duplicateGroup;
+
   return (
     <div className="overview-card" onClick={onSelect} title={t.overviewViewDetail}>
       <div className="overview-card-header">
         <span className="project-name">{project.name}</span>
+        {dupGroup && (
+          <span
+            className="tag tag-duplicate"
+            title={t.duplicateBadgeTitle.replace('{count}', String(dupGroup.members.length))}
+            onClick={(e) => {
+              e.stopPropagation();
+              onCompareDuplicates(dupGroup.groupId);
+            }}
+          >
+            {t.duplicateBadge.replace('{count}', String(dupGroup.members.length))}
+          </span>
+        )}
         {sourceTags.map((meta) => (
           <span key={meta.label} className={`tag ${meta.cls}`} title={meta.title}>
             {meta.label}

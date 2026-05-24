@@ -47,13 +47,21 @@ export type RemoteProvider =
   | 'coding'
   | 'unknown';
 
+/** 重复项目组信息（扫描后由分组逻辑填充） */
+export interface DuplicateGroup {
+  /** 组 ID（标准化后的 remote URL） */
+  groupId: string;
+  /** 该组内的项目路径列表（含自身） */
+  members: string[];
+}
+
 /** 扫描得到的项目 */
 export interface ProjectInfo {
   /** 项目根目录绝对路径 */
   path: string;
   /** 显示名（默认目录名） */
   name: string;
-  /** 一句话描述。来自 package.json description 或 README 首段，未来可由 LLM 改写。 */
+  /** 一句话描述。来自 package.json description 或 README 首段。 */
   description: string | null;
   /** 识别到的生态（一个项目可能匹配多个 marker） */
   ecosystems: EcosystemId[];
@@ -73,6 +81,8 @@ export interface ProjectInfo {
   cleanables: CleanableDir[];
   /** 该项目可清理总字节数 */
   cleanableSize: number;
+  /** 所属重复组（扫描后由 grouping 逻辑填充；无重复则为 null） */
+  duplicateGroup: DuplicateGroup | null;
 }
 
 /** 扫描进度事件 */
@@ -130,6 +140,18 @@ export interface RestoreResult {
   followUpHints: string[];
 }
 
+/** 项目详细信息（按需加载，用于重复对比视图） */
+export interface ProjectDetail {
+  /** 项目路径 */
+  path: string;
+  /** 最近一次 git commit 的时间戳（毫秒）；非 git 仓库为 null */
+  lastCommitTime: number | null;
+  /** 本地有多少未推送的 commit；无 upstream 时为本地全部 commit 数 */
+  unpushedCount: number;
+  /** 项目总大小（字节），不含 .git 目录 */
+  totalSize: number;
+}
+
 /** 项目脏状态详情，用于归档前置确认 */
 export interface ProjectDirtyInfo {
   /** 是否存在已修改/新增/删除但未提交的 tracked 改动 */
@@ -166,6 +188,8 @@ export interface DevZenAPI {
   restoreProject(path: string): Promise<RestoreResult>;
   /** 仅从索引中删除该条目，不动文件 */
   forgetArchive(path: string): Promise<void>;
+  /** 获取项目详细信息（按需加载，用于重复对比视图） */
+  getProjectDetail(path: string): Promise<ProjectDetail>;
 }
 
 declare global {

@@ -1,6 +1,6 @@
 import { app, ipcMain, dialog, shell, BrowserWindow } from 'electron';
 import { IpcChannels } from '@shared/ipc-channels.js';
-import { scanProjects } from '../core/scanner.js';
+import { scanProjects, getProjectDetail } from '../core/scanner.js';
 import { cleanDirectories } from '../core/cleaner.js';
 import {
   archive as archiveProject,
@@ -66,5 +66,9 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(IpcChannels.ForgetArchive, async (_event, target: string) => {
     return forgetArchive(target);
+  });
+
+  ipcMain.handle(IpcChannels.GetProjectDetail, async (_event, target: string) => {
+    return getProjectDetail(target);
   });
 }

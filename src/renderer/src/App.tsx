@@ -10,6 +10,7 @@ import { ActionBar } from './components/ActionBar';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { ArchiveDialog } from './components/ArchiveDialog';
 import { RestoreResultDialog } from './components/RestoreResultDialog';
+import { DuplicateCompare } from './components/DuplicateCompare';
 import { ArchivesScreen } from './components/ArchivesScreen';
 import { SettingsScreen } from './components/SettingsScreen';
 import { FilterBar, EMPTY_FILTER, applyFilter, isFilterActive, type FilterState } from './components/FilterBar';
@@ -95,6 +96,8 @@ export function App() {
   const [restoreResult, setRestoreResult] = useState<RestoreResult | null>(null);
   // 正在恢复的归档路径，用于禁用按钮 / 显示 loading
   const [restoringPath, setRestoringPath] = useState<string | null>(null);
+  // 当前打开的重复对比视图的组 ID；null 表示未打开
+  const [compareGroupId, setCompareGroupId] = useState<string | null>(null);
 
   // 应用主题到 <html> 标签
   useEffect(() => {
@@ -279,6 +282,19 @@ export function App() {
   const handleRemoveTagFromProject = useCallback((p: ProjectInfo, tagId: string) => {
     setTagStore((prev) => removeTagFromProject(p.path, tagId, prev));
   }, []);
+
+  // ---------------- 重复项目对比 ----------------
+  const handleCompareDuplicates = useCallback((groupId: string) => {
+    setCompareGroupId(groupId);
+  }, []);
+
+  // 当前对比视图要展示的项目列表
+  const compareProjects = useMemo<ProjectInfo[]>(() => {
+    if (!compareGroupId) return [];
+    return projects.filter(
+      (p) => p.duplicateGroup?.groupId === compareGroupId
+    );
+  }, [compareGroupId, projects]);
 
   // 详情面板要展示的是当前 projects 列表里的最新数据，
   // 防止外部状态变更后面板里还指着旧引用。
@@ -520,6 +536,7 @@ export function App() {
                     t={t}
                     onReveal={(p: string) => window.devzen.revealInFinder(p)}
                     onSelectProject={(p: ProjectInfo) => setDetailProject(p)}
+                    onCompareDuplicates={handleCompareDuplicates}
                   />
                 )}
               </>
@@ -620,6 +637,19 @@ export function App() {
           t={t}
           onClose={() => setRestoreResult(null)}
           onReveal={(p) => window.devzen.revealInFinder(p)}
+        />
+      )}
+
+      {compareGroupId && compareProjects.length >= 2 && (
+        <DuplicateCompare
+          projects={compareProjects}
+          t={t}
+          onClose={() => setCompareGroupId(null)}
+          onReveal={(p) => window.devzen.revealInFinder(p)}
+          onArchive={(p) => {
+            setCompareGroupId(null);
+            handleOpenArchive(p);
+          }}
         />
       )}
     </div>
