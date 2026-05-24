@@ -90,6 +90,58 @@ export interface CleanResult {
   error?: string;
 }
 
+/**
+ * 归档记录：用于"卸载本地保留远程"功能的元信息。
+ * 列表渲染时会动态校验 path 是否仍存在，所以 pathExists 不持久化到 JSON。
+ */
+export interface ArchiveRecord {
+  /** 原项目根绝对路径，作为索引主键 */
+  path: string;
+  /** 显示名 */
+  name: string;
+  /** 归档时记录的首个 git remote URL，用于展示与万一 .git 损坏时的兜底恢复 */
+  remoteUrl: string;
+  /** 归档时识别到的远程托管商 */
+  remoteProviders: RemoteProvider[];
+  /** 归档时识别到的项目生态，用于恢复后给出 followUpHints */
+  ecosystems: EcosystemId[];
+  /** 归档时间戳（毫秒） */
+  archivedAt: number;
+  /** 本次归档实际释放的字节数 */
+  freedBytes: number;
+  /** 列表渲染时刷新；不持久化 */
+  pathExists?: boolean;
+}
+
+/** 归档执行结果 */
+export interface ArchiveResult {
+  path: string;
+  success: boolean;
+  freedBytes: number;
+  error?: string;
+}
+
+/** 恢复执行结果 */
+export interface RestoreResult {
+  path: string;
+  success: boolean;
+  error?: string;
+  /** 后续建议执行的命令（npm install / cargo build 等），仅作展示 */
+  followUpHints: string[];
+}
+
+/** 项目脏状态详情，用于归档前置确认 */
+export interface ProjectDirtyInfo {
+  /** 是否存在已修改/新增/删除但未提交的 tracked 改动 */
+  hasUncommitted: boolean;
+  /** 是否存在 untracked 但未被 ignored 的文件（用户尚未 add 的脏文件） */
+  hasUntrackedNonIgnored: boolean;
+  /** 是否存在未推送的本地 commit（包含没有上游分支的情况） */
+  hasUnpushed: boolean;
+  /** 给用户看的多行文本说明 */
+  detail: string;
+}
+
 /** preload 暴露给渲染层的 API */
 export interface DevZenAPI {
   /** 默认建议的扫描根目录（一般为用户主目录） */
@@ -104,6 +156,16 @@ export interface DevZenAPI {
   cleanDirs(paths: string[]): Promise<CleanResult[]>;
   /** 在 Finder 中显示该路径 */
   revealInFinder(path: string): Promise<void>;
+  /** 检测项目脏状态（用于归档前置确认） */
+  checkProjectDirty(path: string): Promise<ProjectDirtyInfo>;
+  /** 归档项目（删 tracked + 白名单 ignored；保留 .git/untracked/敏感配置） */
+  archiveProject(path: string, force: boolean): Promise<ArchiveResult>;
+  /** 列出全部归档记录（自动刷新 pathExists） */
+  listArchives(): Promise<ArchiveRecord[]>;
+  /** 离线恢复：git restore . 把 tracked 文件还原 */
+  restoreProject(path: string): Promise<RestoreResult>;
+  /** 仅从索引中删除该条目，不动文件 */
+  forgetArchive(path: string): Promise<void>;
 }
 
 declare global {

@@ -25,6 +25,8 @@ interface Props {
   onCreateTag: (name: string) => Tag;
   onDeleteTag: (id: string) => void;
   onReveal: (path: string) => void;
+  /** 触发归档流程；source === 'local' 时上层应不触发，仅作兜底 */
+  onArchive: (project: ProjectInfo) => void;
 }
 
 /** 每个远程提供商的 i18n key 映射 */
@@ -73,7 +75,8 @@ export function ProjectDetailPanel({
   onRemoveTagFromProject,
   onCreateTag,
   onDeleteTag,
-  onReveal
+  onReveal,
+  onArchive
 }: Props) {
   // 受控显隐：项目存在时打开，便于做退场动画
   const open = project != null;
@@ -376,6 +379,24 @@ export function ProjectDetailPanel({
           <div className="muted detail-hint">
             {t.detailCleanHint}
           </div>
+        </section>
+
+        <section className="detail-section">
+          <div className="detail-label">{t.archiveBtn}</div>
+          {project.source === 'local' ? (
+            <div className="muted detail-hint">{t.archiveBtnLocal}</div>
+          ) : (
+            <>
+              <button
+                className="danger detail-archive-btn"
+                onClick={() => onArchive(project)}
+                title={t.archiveBtnTitle}
+              >
+                {t.archiveBtn}
+              </button>
+              <div className="muted detail-hint">{t.archiveDescClean}</div>
+            </>
+          )}
         </section>
       </aside>
     </>

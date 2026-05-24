@@ -2,6 +2,13 @@ import { app, ipcMain, dialog, shell, BrowserWindow } from 'electron';
 import { IpcChannels } from '@shared/ipc-channels.js';
 import { scanProjects } from '../core/scanner.js';
 import { cleanDirectories } from '../core/cleaner.js';
+import {
+  archive as archiveProject,
+  checkDirty,
+  forgetArchive,
+  listArchives,
+  restore as restoreProject
+} from '../core/archiver.js';
 import type { ScanProgress } from '@shared/types';
 
 /** 注册全部 IPC handler。需在 app ready 之后、创建 window 之前调用一次。 */
@@ -39,5 +46,25 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(IpcChannels.RevealInFinder, async (_event, target: string) => {
     shell.showItemInFolder(target);
+  });
+
+  ipcMain.handle(IpcChannels.CheckProjectDirty, async (_event, target: string) => {
+    return checkDirty(target);
+  });
+
+  ipcMain.handle(IpcChannels.ArchiveProject, async (_event, target: string, force: boolean) => {
+    return archiveProject(target, force);
+  });
+
+  ipcMain.handle(IpcChannels.ListArchives, async () => {
+    return listArchives();
+  });
+
+  ipcMain.handle(IpcChannels.RestoreProject, async (_event, target: string) => {
+    return restoreProject(target);
+  });
+
+  ipcMain.handle(IpcChannels.ForgetArchive, async (_event, target: string) => {
+    return forgetArchive(target);
   });
 }

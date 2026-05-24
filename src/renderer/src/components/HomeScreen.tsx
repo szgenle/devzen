@@ -1,10 +1,12 @@
 import { shortenPath, formatRelative, formatBytes } from '../utils/format';
 import type { HistoryEntry } from '../utils/storage';
+import type { ArchiveRecord } from '@shared/types';
 import type { Messages } from '../utils/i18n';
 
 interface Props {
   rootDir: string | null;
   history: HistoryEntry[];
+  archives: ArchiveRecord[];
   t: Messages;
   onPickDir: () => void;
   onScan: () => void;
@@ -12,6 +14,7 @@ interface Props {
   onRescanEntry: (entry: HistoryEntry) => void;
   onRemoveEntry: (rootDir: string) => void;
   onOpenSettings: () => void;
+  onOpenArchives: () => void;
 }
 
 /**
@@ -23,15 +26,17 @@ interface Props {
 export function HomeScreen({
   rootDir,
   history,
+  archives,
   t,
   onPickDir,
   onScan,
   onViewEntry,
   onRescanEntry,
   onRemoveEntry,
-  onOpenSettings
+  onOpenSettings,
+  onOpenArchives
 }: Props) {
-  if (history.length === 0) {
+  if (history.length === 0 && archives.length === 0) {
     return <WelcomeCard rootDir={rootDir} t={t} onPickDir={onPickDir} onScan={onScan} onOpenSettings={onOpenSettings} />;
   }
 
@@ -63,63 +68,89 @@ export function HomeScreen({
           </button>
         </div>
 
-        <div className="home-list-stats">
-          <div className="home-list-stat">
-            <span className="home-list-stat-label">{t.homeHistoryTitle}</span>
-            <span className="home-list-stat-value">{history.length}</span>
-          </div>
-          <div className="home-list-stat-divider" />
-          <div className="home-list-stat">
-            <span className="home-list-stat-label">{t.overviewProjectCount}</span>
-            <span className="home-list-stat-value">{totalProjects}</span>
-          </div>
-          <div className="home-list-stat-divider" />
-          <div className="home-list-stat">
-            <span className="home-list-stat-label">{t.cleanable}</span>
-            <span className="home-list-stat-value is-accent">{formatBytes(totalCleanableAll)}</span>
-          </div>
-        </div>
+        {history.length > 0 && (
+          <>
+            <div className="home-list-stats">
+              <div className="home-list-stat">
+                <span className="home-list-stat-label">{t.homeHistoryTitle}</span>
+                <span className="home-list-stat-value">{history.length}</span>
+              </div>
+              <div className="home-list-stat-divider" />
+              <div className="home-list-stat">
+                <span className="home-list-stat-label">{t.overviewProjectCount}</span>
+                <span className="home-list-stat-value">{totalProjects}</span>
+              </div>
+              <div className="home-list-stat-divider" />
+              <div className="home-list-stat">
+                <span className="home-list-stat-label">{t.cleanable}</span>
+                <span className="home-list-stat-value is-accent">{formatBytes(totalCleanableAll)}</span>
+              </div>
+            </div>
 
-        <ul className="history-list">
-          {history.map((entry) => {
-            const totalCleanable = entry.projects.reduce((s, p) => s + p.cleanableSize, 0);
-            return (
-              <li
-                key={entry.rootDir}
-                className="history-item"
-                onClick={() => onViewEntry(entry)}
-                title={t.homeClickToView}
-              >
-                <div className="history-item-icon" aria-hidden>📁</div>
-                <div className="history-item-main">
-                  <div className="history-item-path" title={entry.rootDir}>
-                    {shortenPath(entry.rootDir, 64)}
-                  </div>
-                  <div className="history-item-meta muted">
-                    {entry.projects.length} {t.overviewProjectCount} · {t.cleanable} {formatBytes(totalCleanable)} ·
-                    {t.scannedAtPrefix} {formatRelative(entry.scannedAt, t._lang as 'zh' | 'en')}
-                  </div>
-                </div>
-                <div className="history-item-actions" onClick={(e) => e.stopPropagation()}>
-                  <button className="link-btn" onClick={() => onViewEntry(entry)}>
-                    {t.homeView}
-                  </button>
-                  <button className="link-btn" onClick={() => onRescanEntry(entry)}>
-                    {t.homeRescan}
-                  </button>
-                  <button
-                    className="icon-btn history-remove"
-                    onClick={() => onRemoveEntry(entry.rootDir)}
-                    title={t.homeRemove}
-                    aria-label={t.homeRemove}
+            <ul className="history-list">
+              {history.map((entry) => {
+                const totalCleanable = entry.projects.reduce((s, p) => s + p.cleanableSize, 0);
+                return (
+                  <li
+                    key={entry.rootDir}
+                    className="history-item"
+                    onClick={() => onViewEntry(entry)}
+                    title={t.homeClickToView}
                   >
-                    ×
-                  </button>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+                    <div className="history-item-icon" aria-hidden>📁</div>
+                    <div className="history-item-main">
+                      <div className="history-item-path" title={entry.rootDir}>
+                        {shortenPath(entry.rootDir, 64)}
+                      </div>
+                      <div className="history-item-meta muted">
+                        {entry.projects.length} {t.overviewProjectCount} · {t.cleanable} {formatBytes(totalCleanable)} ·
+                        {t.scannedAtPrefix} {formatRelative(entry.scannedAt, t._lang as 'zh' | 'en')}
+                      </div>
+                    </div>
+                    <div className="history-item-actions" onClick={(e) => e.stopPropagation()}>
+                      <button className="link-btn" onClick={() => onViewEntry(entry)}>
+                        {t.homeView}
+                      </button>
+                      <button className="link-btn" onClick={() => onRescanEntry(entry)}>
+                        {t.homeRescan}
+                      </button>
+                      <button
+                        className="icon-btn history-remove"
+                        onClick={() => onRemoveEntry(entry.rootDir)}
+                        title={t.homeRemove}
+                        aria-label={t.homeRemove}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </>
+        )}
+
+        {archives.length > 0 && (
+          <button
+            type="button"
+            className="home-archived-entry"
+            onClick={onOpenArchives}
+            title={t.homeArchivedEntryHint}
+          >
+            <div className="home-archived-entry-icon" aria-hidden>📦</div>
+            <div className="home-archived-entry-main">
+              <div className="home-archived-entry-title">
+                {t.homeArchivedEntryTitle.replace('{count}', String(archives.length))}
+              </div>
+              <div className="home-archived-entry-meta muted">
+                {t.archivesTotalFreed} {formatBytes(archives.reduce((s, r) => s + r.freedBytes, 0))}
+                {' · '}
+                {t.homeArchivedEntryHint}
+              </div>
+            </div>
+            <div className="home-archived-entry-arrow" aria-hidden>→</div>
+          </button>
+        )}
 
         <div className="home-list-foot">
           <div className="home-path">

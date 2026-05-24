@@ -1,6 +1,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import type { CleanResult } from '@shared/types';
+import { CLEANABLE_DIR_NAMES } from './cleanable-names.js';
 
 /**
  * 清理给定目录列表。每个目录在删除前会校验：
@@ -36,30 +37,7 @@ async function cleanOne(target: string): Promise<CleanResult> {
 
   // 防止误删项目根本身：只允许已知的可清理目录名
   // （此处仅做名字层面的二次保护，主要防御已在 scanner 中）
-  const ALLOWED_NAMES = new Set([
-    'node_modules',
-    'target',
-    '.next',
-    '.nuxt',
-    '.turbo',
-    '.cache',
-    'dist',
-    'build',
-    'out',
-    'bin',
-    'vendor',
-    '.venv',
-    'venv',
-    '__pycache__',
-    '.pytest_cache',
-    '.mypy_cache',
-    '.ruff_cache',
-    '.gradle',
-    'DerivedData',
-    '.build',
-    '.cxx'
-  ]);
-  if (!ALLOWED_NAMES.has(path.basename(target))) {
+  if (!CLEANABLE_DIR_NAMES.has(path.basename(target))) {
     return {
       path: target,
       success: false,

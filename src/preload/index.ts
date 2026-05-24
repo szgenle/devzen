@@ -1,6 +1,15 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import { IpcChannels } from '@shared/ipc-channels.js';
-import type { CleanResult, DevZenAPI, ProjectInfo, ScanProgress } from '@shared/types';
+import type {
+  ArchiveRecord,
+  ArchiveResult,
+  CleanResult,
+  DevZenAPI,
+  ProjectDirtyInfo,
+  ProjectInfo,
+  RestoreResult,
+  ScanProgress
+} from '@shared/types';
 
 const api: DevZenAPI = {
   getDefaultRootDir: () =>
@@ -23,7 +32,22 @@ const api: DevZenAPI = {
     ipcRenderer.invoke(IpcChannels.CleanDirs, paths) as Promise<CleanResult[]>,
 
   revealInFinder: (target: string) =>
-    ipcRenderer.invoke(IpcChannels.RevealInFinder, target) as Promise<void>
+    ipcRenderer.invoke(IpcChannels.RevealInFinder, target) as Promise<void>,
+
+  checkProjectDirty: (target: string) =>
+    ipcRenderer.invoke(IpcChannels.CheckProjectDirty, target) as Promise<ProjectDirtyInfo>,
+
+  archiveProject: (target: string, force: boolean) =>
+    ipcRenderer.invoke(IpcChannels.ArchiveProject, target, force) as Promise<ArchiveResult>,
+
+  listArchives: () =>
+    ipcRenderer.invoke(IpcChannels.ListArchives) as Promise<ArchiveRecord[]>,
+
+  restoreProject: (target: string) =>
+    ipcRenderer.invoke(IpcChannels.RestoreProject, target) as Promise<RestoreResult>,
+
+  forgetArchive: (target: string) =>
+    ipcRenderer.invoke(IpcChannels.ForgetArchive, target) as Promise<void>
 };
 
 contextBridge.exposeInMainWorld('devzen', api);

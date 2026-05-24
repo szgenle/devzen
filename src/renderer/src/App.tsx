@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { CleanResult, ProjectInfo, ScanProgress } from '@shared/types';
+import type { ArchiveRecord, CleanResult, ProjectInfo, RestoreResult, ScanProgress } from '@shared/types';
 import { OverviewList } from './components/OverviewList';
 import { CleanupList } from './components/CleanupList';
 import { ProjectDetailPanel } from './components/ProjectDetailPanel';
@@ -8,6 +8,9 @@ import { ScanScreen } from './components/ScanScreen';
 import { ResultsHeader } from './components/ResultsHeader';
 import { ActionBar } from './components/ActionBar';
 import { ConfirmDialog } from './components/ConfirmDialog';
+import { ArchiveDialog } from './components/ArchiveDialog';
+import { RestoreResultDialog } from './components/RestoreResultDialog';
+import { ArchivesScreen } from './components/ArchivesScreen';
 import { SettingsScreen } from './components/SettingsScreen';
 import { FilterBar, EMPTY_FILTER, applyFilter, isFilterActive, type FilterState } from './components/FilterBar';
 import { formatBytes } from './utils/format';
@@ -44,7 +47,7 @@ import {
 } from './utils/preferences';
 import { getMessages } from './utils/i18n';
 
-type View = 'home' | 'scanning' | 'results' | 'settings';
+type View = 'home' | 'scanning' | 'results' | 'settings' | 'archives';
 type ResultsTab = 'overview' | 'cleanup';
 export type ViewMode = 'list' | 'card';
 
@@ -84,6 +87,14 @@ export function App() {
   const t = useMemo(() => getMessages(prefs.lang), [prefs.lang]);
   // 概览页筛选状态
   const [filter, setFilter] = useState<FilterState>(EMPTY_FILTER);
+  // 已归档项目列表（由主进程的 archive-store 驱动）
+  const [archives, setArchives] = useState<ArchiveRecord[]>([]);
+  // 当前打开归档对话框的目标项目
+  const [archiveTarget, setArchiveTarget] = useState<ProjectInfo | null>(null);
+  // 恢复操作的结果对话框
+  const [restoreResult, setRestoreResult] = useState<RestoreResult | null>(null);
+  // 正在恢复的归档路径，用于禁用按钮 / 显示 loading
+  const [restoringPath, setRestoringPath] = useState<string | null>(null);
 
   // 应用主题到 <html> 标签
   useEffect(() => {
@@ -107,6 +118,8 @@ export function App() {
     window.devzen.getDefaultRootDir().then((dir) => {
       setRootDir((curr) => curr ?? dir);
     });
+    // 加载归档列表
+    window.devzen.listArchives().then(setArchives).catch(() => undefined);
   }, []);
 
   // 订阅扫描进度
@@ -215,6 +228,10 @@ export function App() {
 
   const handleOpenSettings = useCallback(() => setView('settings'), []);
   const handleBackFromSettings = useCallback(() => setView('home'), []);
+
+  // 打开/关闭 已归档项目独立页
+  const handleOpenArchives = useCallback(() => setView('archives'), []);
+  const handleBackFromArchives = useCallback(() => setView('home'), []);
 
   // ---------------- 分类管理 ----------------
   const handleAssignCategory = useCallback((p: ProjectInfo, categoryId: string) => {
@@ -356,12 +373,80 @@ export function App() {
     setRootDir(dir);
   }, []);
 
+  // ---------------- 归档 / 恢复 ----------------
+  // 详情面板触发归档：仅打开对话框，实际删除由对话框内部调用
+  const handleOpenArchive = useCallback((p: ProjectInfo) => {
+    setArchiveTarget(p);
+  }, []);
+
+  // 归档成功后：刷新归档列表、关闭对话框、关闭详情面板、
+  // 若当前停留在结果页则把该项目从列表中剔除（已被卸载）
+  const handleArchived = useCallback(
+    async (_freedBytes: number) => {
+      const target = archiveTarget;
+      setArchiveTarget(null);
+      setDetailProject(null);
+      try {
+        const next = await window.devzen.listArchives();
+        setArchives(next);
+      } catch {
+        // 忽略列表刷新失败：不影响已完成的归档动作
+      }
+      if (target) {
+        setProjects((prev) => prev.filter((p) => p.path !== target.path));
+      }
+    },
+    [archiveTarget]
+  );
+
+  // 首页点击"恢复"：调用 restoreProject，结果展示在 RestoreResultDialog
+  const handleRestoreArchive = useCallback(async (rec: ArchiveRecord) => {
+    setRestoringPath(rec.path);
+    try {
+      const result = await window.devzen.restoreProject(rec.path);
+      setRestoreResult(result);
+      // 恢复后刷新归档列表（pathExists 可能变化；恢复成功后通常仍保留在列表）
+      try {
+        const next = await window.devzen.listArchives();
+        setArchives(next);
+      } catch {
+        // ignore
+      }
+    } catch (e) {
+      setRestoreResult({
+        path: rec.path,
+        success: false,
+        error: (e as Error).message,
+        followUpHints: []
+      });
+    } finally {
+      setRestoringPath(null);
+    }
+  }, []);
+
+  // 首页"忘记"：仅从索引移除，不动本地文件
+  const handleForgetArchive = useCallback(
+    async (path: string) => {
+      const ok = window.confirm(t.forgetConfirm);
+      if (!ok) return;
+      try {
+        await window.devzen.forgetArchive(path);
+        const next = await window.devzen.listArchives();
+        setArchives(next);
+      } catch {
+        // ignore
+      }
+    },
+    [t.forgetConfirm]
+  );
+
   return (
-    <div className={`app app-${view === 'settings' ? 'home' : view}`}>
+    <div className={`app app-${view === 'settings' || view === 'archives' ? 'home' : view}`}>
       {view === 'home' && (
         <HomeScreen
           rootDir={rootDir}
           history={history}
+          archives={archives}
           t={t}
           onPickDir={handlePickRootDir}
           onScan={handleScan}
@@ -369,6 +454,19 @@ export function App() {
           onRescanEntry={handleRescanEntry}
           onRemoveEntry={handleRemoveEntry}
           onOpenSettings={handleOpenSettings}
+          onOpenArchives={handleOpenArchives}
+        />
+      )}
+
+      {view === 'archives' && (
+        <ArchivesScreen
+          archives={archives}
+          t={t}
+          restoringPath={restoringPath}
+          onBack={handleBackFromArchives}
+          onRestore={handleRestoreArchive}
+          onForget={handleForgetArchive}
+          onReveal={(p) => window.devzen.revealInFinder(p)}
         />
       )}
 
@@ -467,6 +565,7 @@ export function App() {
         onCreateTag={handleCreateTag}
         onDeleteTag={handleDeleteTag}
         onReveal={(p) => window.devzen.revealInFinder(p)}
+        onArchive={handleOpenArchive}
       />
 
       {confirmOpen && (
@@ -502,6 +601,24 @@ export function App() {
           confirmDisabled={cleaning}
           onConfirm={handleClean}
           onCancel={() => setConfirmOpen(false)}
+        />
+      )}
+
+      {archiveTarget && (
+        <ArchiveDialog
+          project={archiveTarget}
+          t={t}
+          onClose={() => setArchiveTarget(null)}
+          onArchived={handleArchived}
+        />
+      )}
+
+      {restoreResult && (
+        <RestoreResultDialog
+          result={restoreResult}
+          t={t}
+          onClose={() => setRestoreResult(null)}
+          onReveal={(p) => window.devzen.revealInFinder(p)}
         />
       )}
     </div>
