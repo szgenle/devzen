@@ -461,6 +461,7 @@ export function App() {
       {view === 'archives' && (
         <ArchivesScreen
           archives={archives}
+          categoryStore={categoryStore}
           t={t}
           restoringPath={restoringPath}
           onBack={handleBackFromArchives}

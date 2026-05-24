@@ -1,4 +1,4 @@
-import type { ProjectInfo, ProjectSource } from '@shared/types';
+import type { ArchiveRecord, ProjectInfo, ProjectSource } from '@shared/types';
 
 /**
  * 项目分类（主分类）本地存档。
@@ -106,6 +106,22 @@ export function getProjectCategoryId(p: ProjectInfo, store: CategoryStore): stri
     if (all.some((c) => c.id === manual)) return manual;
   }
   return inferCategoryId(p.source);
+}
+
+/**
+ * 取已归档项目的分类 ID。
+ * 归档项目没有 source 字段（已被卸载），但归档准入要求 source ∈ {github, remote}，
+ * 因此用 remoteProviders 兜底推断：含 github 提供商 → 第三方，否则 → 工作。
+ * 用户曾经手动分配的分类（按路径关联）依然优先生效。
+ */
+export function getArchiveCategoryId(rec: ArchiveRecord, store: CategoryStore): string {
+  const manual = store.assignments[rec.path];
+  if (manual) {
+    const all = getAllCategories(store);
+    if (all.some((c) => c.id === manual)) return manual;
+  }
+  const isGithub = rec.remoteProviders?.includes('github');
+  return isGithub ? BUILTIN_IDS.thirdParty : BUILTIN_IDS.work;
 }
 
 export function findCategory(id: string, store: CategoryStore): Category | null {

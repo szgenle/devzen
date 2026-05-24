@@ -2096,3 +2096,27 @@ button.ghost-btn:hover:not(:disabled) {
   gap: 8px;
   flex-shrink: 0;
 }
+
+/* 归档页分组：复用 .overview-group 结构，但在 archives-card 内做轻量化处理 */
+.archives-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.archives-group {
+  border-bottom: none;
+}
+.archives-group .overview-group-head {
+  padding: 6px 0;
+  background: transparent;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 6px;
+}
+.archives-group .group-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+.archives-group .group-count {
+  font-size: 11px;
+  color: var(--text-muted, #8b949e);
+}
