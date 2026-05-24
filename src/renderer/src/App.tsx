@@ -7,7 +7,12 @@ import { ResultsHeader } from './components/ResultsHeader';
 import { ActionBar } from './components/ActionBar';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { formatBytes } from './utils/format';
-import { loadSnapshot, saveSnapshot, clearSnapshot } from './utils/storage';
+import {
+  loadHistory,
+  upsertHistoryEntry,
+  removeHistoryEntry,
+  type HistoryEntry
+} from './utils/storage';
 
 type View = 'home' | 'scanning' | 'results';
 
@@ -22,17 +27,13 @@ export function App() {
   const [lastResults, setLastResults] = useState<CleanResult[] | null>(null);
   // 上次扫描时间戳；用于在结果页头部展示"上次扫描于 X"，提示数据新鲜度
   const [scannedAt, setScannedAt] = useState<number | null>(null);
+  // 扫描历史列表：首页以列表形式呈现，用户自己决定查看或重扫
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
 
-  // 启动时优先恢复上次扫描快照；没有快照才取默认主目录
+  // 启动时加载历史与默认主目录，但保持在首页：
+  // 清理是低频操作，没必要每次进入都自动扫描。
   useEffect(() => {
-    const snap = loadSnapshot();
-    if (snap && snap.projects.length > 0) {
-      setRootDir(snap.rootDir);
-      setProjects(snap.projects);
-      setScannedAt(snap.scannedAt);
-      setView('results');
-      return;
-    }
+    setHistory(loadHistory());
     window.devzen.getDefaultRootDir().then((dir) => {
       setRootDir((curr) => curr ?? dir);
     });
@@ -56,16 +57,61 @@ export function App() {
       const ts = Date.now();
       setProjects(list);
       setScannedAt(ts);
-      // 扫描成功立刻持久化，下次进入应用直接看到结果
-      saveSnapshot({ rootDir, projects: list, scannedAt: ts });
+      // 扫描成功后写回历史，让下次进入首页能看到这条记录
+      setHistory(upsertHistoryEntry({ rootDir, projects: list, scannedAt: ts }));
       setView('results');
     } catch {
       setView('home');
     }
   }, [rootDir]);
 
-  // 返回首页：仅切换视图，不动持久化的快照与当前结果，
-  // 这样用户从首页再次扫描或重启应用都能继续看到上次数据
+  // 从历史进入查看上次扫描结果，不重新扫描
+  const handleViewEntry = useCallback((entry: HistoryEntry) => {
+    setRootDir(entry.rootDir);
+    setProjects(entry.projects);
+    setScannedAt(entry.scannedAt);
+    setSelected(new Set());
+    setLastResults(null);
+    setView('results');
+  }, []);
+
+  // 从历史列表里以某个路径为起点重新扫描
+  const handleRescanEntry = useCallback(
+    (entry: HistoryEntry) => {
+      setRootDir(entry.rootDir);
+      // 状态更新是异步的，用 setTimeout 让 setRootDir 先生效，
+      // 避免 handleScan 里读到旧的 rootDir。
+      setTimeout(() => {
+        if (entry.rootDir) {
+          setView('scanning');
+          setProjects([]);
+          setSelected(new Set());
+          setLastResults(null);
+          setProgress({ scannedDirs: 0, foundProjects: 0, currentPath: entry.rootDir });
+          window.devzen
+            .scanProjects(entry.rootDir)
+            .then((list) => {
+              const ts = Date.now();
+              setProjects(list);
+              setScannedAt(ts);
+              setHistory(
+                upsertHistoryEntry({ rootDir: entry.rootDir, projects: list, scannedAt: ts })
+              );
+              setView('results');
+            })
+            .catch(() => setView('home'));
+        }
+      }, 0);
+    },
+    []
+  );
+
+  // 删除某条历史，仅动本地存档，不会变动实际文件系统
+  const handleRemoveEntry = useCallback((rootDir: string) => {
+    setHistory(removeHistoryEntry(rootDir));
+  }, []);
+
+  // 返回首页：仅切换视图，历史与当前结果均保留，用户可从历史重新点进查看
   const handleBackHome = useCallback(() => {
     setView('home');
     setSelected(new Set());
@@ -129,13 +175,13 @@ export function App() {
     try {
       const results = await window.devzen.cleanDirs(Array.from(selected));
       setLastResults(results);
-      // 重新扫描以刷新状态，同时更新快照
+      // 重新扫描以刷新状态，同时更新该路径的历史记录
       if (rootDir) {
         const list = await window.devzen.scanProjects(rootDir);
         const ts = Date.now();
         setProjects(list);
         setScannedAt(ts);
-        saveSnapshot({ rootDir, projects: list, scannedAt: ts });
+        setHistory(upsertHistoryEntry({ rootDir, projects: list, scannedAt: ts }));
       }
       setSelected(new Set());
     } finally {
@@ -144,20 +190,26 @@ export function App() {
     }
   }, [selected, rootDir]);
 
-  // 切换扫描目录后，旧目录的快照已不再适用，直接清掉
-  const handlePickAndReset = useCallback(async () => {
+  // 首页点击"换个目录"：仅更新当前 rootDir，
+  // 不动历史中其他路径的存档。
+  const handlePickRootDir = useCallback(async () => {
     const dir = await window.devzen.pickRootDir();
     if (!dir) return;
     setRootDir(dir);
-    setProjects([]);
-    setScannedAt(null);
-    clearSnapshot();
   }, []);
 
   return (
     <div className={`app app-${view}`}>
       {view === 'home' && (
-        <HomeScreen rootDir={rootDir} onPickDir={handlePickAndReset} onScan={handleScan} />
+        <HomeScreen
+          rootDir={rootDir}
+          history={history}
+          onPickDir={handlePickRootDir}
+          onScan={handleScan}
+          onViewEntry={handleViewEntry}
+          onRescanEntry={handleRescanEntry}
+          onRemoveEntry={handleRemoveEntry}
+        />
       )}
 
       {view === 'scanning' && <ScanScreen progress={progress} />}

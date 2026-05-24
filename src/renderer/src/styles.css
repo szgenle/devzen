@@ -182,6 +182,112 @@ button.ghost-btn:hover:not(:disabled) {
   line-height: 1.5;
 }
 
+/* ---------------- Home: history list ---------------- */
+.home-screen--list {
+  align-items: flex-start;
+  padding-top: 60px;
+}
+.home-list-card {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 28px 28px 20px;
+  -webkit-app-region: no-drag;
+}
+.home-list-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+.home-list-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 6px 0 4px;
+}
+.home-list-tagline {
+  font-size: 12px;
+  margin: 0;
+}
+.history-list {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.history-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.history-item:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-strong);
+}
+.history-item-main {
+  flex: 1;
+  min-width: 0;
+}
+.history-item-path {
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 13px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.history-item-meta {
+  font-size: 11px;
+  margin-top: 4px;
+}
+.history-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.history-remove {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 0;
+  cursor: pointer;
+}
+.history-remove:hover {
+  color: var(--danger-hover);
+  border-color: var(--border);
+  background: var(--bg-elev-2);
+}
+.home-list-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.home-list-foot .home-path {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+}
+
 /* ---------------- Scan screen ---------------- */
 .scan-screen {
   height: 100vh;
