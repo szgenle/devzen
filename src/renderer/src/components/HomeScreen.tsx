@@ -35,6 +35,13 @@ export function HomeScreen({
     return <WelcomeCard rootDir={rootDir} t={t} onPickDir={onPickDir} onScan={onScan} onOpenSettings={onOpenSettings} />;
   }
 
+  // 汇总：所有历史合计的项目数 + 累计可清理体积，让头部信息更饱满，缓解空旷感
+  const totalProjects = history.reduce((s, e) => s + e.projects.length, 0);
+  const totalCleanableAll = history.reduce(
+    (s, e) => s + e.projects.reduce((ss, p) => ss + p.cleanableSize, 0),
+    0
+  );
+
   return (
     <div className="home-screen home-screen--list">
       <div className="home-list-card">
@@ -56,6 +63,23 @@ export function HomeScreen({
           </button>
         </div>
 
+        <div className="home-list-stats">
+          <div className="home-list-stat">
+            <span className="home-list-stat-label">{t.homeHistoryTitle}</span>
+            <span className="home-list-stat-value">{history.length}</span>
+          </div>
+          <div className="home-list-stat-divider" />
+          <div className="home-list-stat">
+            <span className="home-list-stat-label">{t.overviewProjectCount}</span>
+            <span className="home-list-stat-value">{totalProjects}</span>
+          </div>
+          <div className="home-list-stat-divider" />
+          <div className="home-list-stat">
+            <span className="home-list-stat-label">{t.cleanable}</span>
+            <span className="home-list-stat-value is-accent">{formatBytes(totalCleanableAll)}</span>
+          </div>
+        </div>
+
         <ul className="history-list">
           {history.map((entry) => {
             const totalCleanable = entry.projects.reduce((s, p) => s + p.cleanableSize, 0);
@@ -66,6 +90,7 @@ export function HomeScreen({
                 onClick={() => onViewEntry(entry)}
                 title={t.homeClickToView}
               >
+                <div className="history-item-icon" aria-hidden>📁</div>
                 <div className="history-item-main">
                   <div className="history-item-path" title={entry.rootDir}>
                     {shortenPath(entry.rootDir, 64)}

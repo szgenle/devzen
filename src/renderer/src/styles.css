@@ -202,8 +202,9 @@ button.ghost-btn:hover:not(:disabled) {
 
 /* ---------------- Home: history list ---------------- */
 .home-screen--list {
-  align-items: flex-start;
-  padding-top: 60px;
+  /* 跟欢迎卡片保持一致的垂直居中，避免历史卡片孤零零地贴在屏幕上方 */
+  align-items: center;
+  padding: 48px 24px;
 }
 .home-list-card {
   width: 100%;
@@ -213,13 +214,15 @@ button.ghost-btn:hover:not(:disabled) {
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 28px 28px 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
   -webkit-app-region: no-drag;
 }
 .home-list-head {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 18px;
+  gap: 16px;
+  margin-bottom: 14px;
 }
 .home-list-title {
   font-size: 20px;
@@ -229,6 +232,41 @@ button.ghost-btn:hover:not(:disabled) {
 .home-list-tagline {
   font-size: 12px;
   margin: 0;
+}
+.home-list-stats {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.home-list-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.home-list-stat-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 0.4px;
+}
+.home-list-stat-value {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+.home-list-stat-value.is-accent {
+  color: var(--accent);
+}
+.home-list-stat-divider {
+  width: 1px;
+  align-self: stretch;
+  background: var(--border);
 }
 .history-list {
   list-style: none;
@@ -247,11 +285,25 @@ button.ghost-btn:hover:not(:disabled) {
   border: 1px solid var(--border);
   border-radius: 10px;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.15s, border-color 0.15s, transform 0.15s;
 }
 .history-item:hover {
   background: var(--bg-hover);
   border-color: var(--border-strong);
+  transform: translateY(-1px);
+}
+.history-item-icon {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  color: var(--accent);
+  font-size: 14px;
 }
 .history-item-main {
   flex: 1;
