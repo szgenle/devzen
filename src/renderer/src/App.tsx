@@ -41,7 +41,7 @@ export type ViewMode = 'list' | 'card';
 const VIEW_MODE_KEY = 'devzen.viewMode.v1';
 function loadViewMode(): ViewMode {
   const v = localStorage.getItem(VIEW_MODE_KEY);
-  return v === 'card' ? 'card' : 'list';
+  return v === 'list' ? 'list' : 'card';
 }
 function saveViewMode(mode: ViewMode): void {
   localStorage.setItem(VIEW_MODE_KEY, mode);
