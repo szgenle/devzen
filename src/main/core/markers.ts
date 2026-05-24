@@ -101,16 +101,15 @@ export const ECOSYSTEMS: EcosystemSpec[] = [
 export const ANDROID_PLUGIN_RE =
   /com\.android\.(application|library|dynamic-feature|test|asset-pack)/;
 
-/** 不应进入扫描的目录名（性能与安全） */
-export const SKIP_DIRS = new Set<string>([
+/**
+ * 硬跳过：绝对不可能成为项目根、且内部嵌套项目可能性极低的目录。
+ * 永远不下钻。
+ */
+export const HARD_SKIP_DIRS = new Set<string>([
   'node_modules',
   '.git',
   '.svn',
   '.hg',
-  'target',
-  'build',
-  'dist',
-  'out',
   '.next',
   '.nuxt',
   '.turbo',
@@ -124,6 +123,22 @@ export const SKIP_DIRS = new Set<string>([
   'Pods', // CocoaPods
   'vendor'
 ]);
+
+/**
+ * 软跳过：典型的构建产物目录，名称常见。
+ * - 在"已识别为项目根"的目录下，会被尝试下钻一层用于嵌套项目嗅探
+ *   （例如 Cocos 引擎把 Android 壳工程放在源项目的 build/ 内）。
+ * - 在"未识别为项目根"的中间目录下，不再无条件跳过。
+ */
+export const SOFT_SKIP_DIRS = new Set<string>([
+  'target',
+  'build',
+  'dist',
+  'out'
+]);
+
+/** 不应进入扫描的目录名合集（保留给 detectAndroid 等子模块遍历使用） */
+export const SKIP_DIRS = new Set<string>([...HARD_SKIP_DIRS, ...SOFT_SKIP_DIRS]);
 
 /**
  * 当扫描入口为用户主目录时，需要跳过的系统/非项目顶层目录。

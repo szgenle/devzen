@@ -10,13 +10,20 @@ import type {
   RemoteProvider,
   ScanProgress
 } from '@shared/types';
-import { ECOSYSTEMS, SKIP_DIRS, SYSTEM_SKIP_DIRS, ANDROID_PLUGIN_RE } from './markers.js';
+import {
+  ECOSYSTEMS,
+  SKIP_DIRS,
+  HARD_SKIP_DIRS,
+  SOFT_SKIP_DIRS,
+  SYSTEM_SKIP_DIRS,
+  ANDROID_PLUGIN_RE
+} from './markers.js';
 
 const execAsync = promisify(exec);
 
 /** 扫描配置 */
 export interface ScanOptions {
-  /** 最大递归深度，从 root 算起。默认 5。 */
+  /** 最大递归深度，从 root 算起。默认 7（兼顾 Cocos/JSB 等深层嵌套 Android 壳工程）。 */
   maxDepth?: number;
   /** 进度回调 */
   onProgress?: (p: ScanProgress) => void;
@@ -36,7 +43,7 @@ export async function scanProjects(
   rootDir: string,
   options: ScanOptions = {}
 ): Promise<ProjectInfo[]> {
-  const maxDepth = options.maxDepth ?? 5;
+  const maxDepth = options.maxDepth ?? 7;
   const onProgress = options.onProgress;
   const home = process.env.HOME ?? '';
   // 当扫描入口为用户主目录时默认启用系统目录排除
@@ -70,7 +77,17 @@ export async function scanProjects(
         foundProjects: projects.length,
         currentPath: dir
       });
-      return; // 命中后停止下钻
+      // 命中后仍尝试在软跳过目录（build/dist/out/target）内寻找嵌套项目，
+      // 解决 Cocos / JSB 等把 Android 壳工程放在源项目 build/ 内部的场景。
+      if (depth < maxDepth) {
+        for (const e of entries) {
+          if (!e.isDirectory()) continue;
+          if (e.name.startsWith('.')) continue;
+          if (!SOFT_SKIP_DIRS.has(e.name)) continue;
+          await walk(path.join(dir, e.name), depth + 1);
+        }
+      }
+      return;
     }
 
     if (depth >= maxDepth) return;
@@ -78,7 +95,10 @@ export async function scanProjects(
     for (const e of entries) {
       if (!e.isDirectory()) continue;
       if (e.name.startsWith('.')) continue; // 跳过隐藏目录
-      if (SKIP_DIRS.has(e.name)) continue;
+      // 硬跳过：node_modules/.git/.gradle/Pods 等永远不下钻
+      if (HARD_SKIP_DIRS.has(e.name)) continue;
+      // 软跳过目录（build/dist/out/target）在父目录未命中 marker 时不再无条件跳过，
+      // 允许识别 Cocos 等引擎在产物路径里嵌套的子项目
       // 仅在顶层（depth === 0）过滤系统目录，避免误伤子目录中同名项目
       if (skipSystem && depth === 0 && SYSTEM_SKIP_DIRS.has(e.name)) continue;
       await walk(path.join(dir, e.name), depth + 1);
