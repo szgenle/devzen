@@ -151,7 +151,16 @@ function generateSuggestions(
   const suggestions: string[] = [];
   if (details.size === 0) return suggestions;
 
-  // 对有未推送 commit 的项目生成警告
+  // 1. 未提交修改警告
+  for (const p of projects) {
+    if (p.gitDirty) {
+      suggestions.push(
+        t.duplicateSuggestionDirtyWarn.replace('{name}', p.name)
+      );
+    }
+  }
+
+  // 2. 未推送 commit 警告
   for (const p of projects) {
     const d = details.get(p.path);
     if (d && d.unpushedCount > 0) {
@@ -163,25 +172,80 @@ function generateSuggestions(
     }
   }
 
-  // 找出最新的副本，建议归档其他副本
-  if (projects.length === 2) {
-    const [a, b] = projects;
-    const da = details.get(a.path);
-    const db = details.get(b.path);
-    if (da && db) {
-      const aTime = da.lastCommitTime ?? 0;
-      const bTime = db.lastCommitTime ?? 0;
-      const newer = aTime >= bTime ? a : b;
-      const older = aTime >= bTime ? b : a;
-      const newerDetail = aTime >= bTime ? da : db;
-      // 仅当较新的副本已全部推送时，才建议归档旧的
-      if (newerDetail.unpushedCount === 0 && older.source !== 'local') {
-        suggestions.push(
-          t.duplicateSuggestionSafe
-            .replace('{name}', newer.name)
-            .replace('{other}', `${older.name} (${shortenPath(older.path, 30)})`)
-        );
+  // 3. 推荐保留最新副本
+  const withCommitTime = projects
+    .map((p) => ({ project: p, detail: details.get(p.path) }))
+    .filter((x) => x.detail?.lastCommitTime);
+
+  if (withCommitTime.length >= 2) {
+    withCommitTime.sort(
+      (a, b) => (b.detail!.lastCommitTime ?? 0) - (a.detail!.lastCommitTime ?? 0)
+    );
+    const newest = withCommitTime[0];
+    suggestions.push(
+      t.duplicateSuggestionNewest
+        .replace('{name}', newest.project.name)
+        .replace('{time}', formatRelative(newest.detail!.lastCommitTime!, t._lang as 'zh' | 'en'))
+    );
+
+    // 4. 计算归档其余副本可释放的空间
+    const freeableSize = withCommitTime
+      .slice(1)
+      .reduce((sum, x) => sum + (x.detail?.totalSize ?? 0), 0);
+    if (freeableSize > 0) {
+      suggestions.push(
+        t.duplicateSuggestionFreeable.replace('{size}', formatBytes(freeableSize))
+      );
+    }
+
+    // 5. 如果最新副本已全部同步，生成安全归档建议
+    const newestDetail = newest.detail!;
+    if (newestDetail.unpushedCount === 0 && !newest.project.gitDirty) {
+      // 检查所有副本是否都已同步
+      const allSynced = projects.every((p) => {
+        const d = details.get(p.path);
+        return d ? d.unpushedCount === 0 : true;
+      });
+      if (allSynced) {
+        suggestions.push(t.duplicateSuggestionAllSynced);
+      } else {
+        // 只针对 2 个副本的简化建议
+        const others = withCommitTime.slice(1);
+        for (const other of others) {
+          if (
+            other.detail!.unpushedCount === 0 &&
+            !other.project.gitDirty &&
+            other.project.source !== 'local'
+          ) {
+            suggestions.push(
+              t.duplicateSuggestionSafe
+                .replace('{name}', newest.project.name)
+                .replace('{other}', `${other.project.name} (${shortenPath(other.project.path, 30)})`)
+            );
+          }
+        }
       }
+    }
+  } else if (projects.length >= 2) {
+    // 没有 commit 时间数据（非 git 项目），基于 lastModified 推荐
+    const sorted = [...projects].sort(
+      (a, b) => (b.lastModified ?? 0) - (a.lastModified ?? 0)
+    );
+    if (sorted[0].lastModified) {
+      suggestions.push(
+        t.duplicateSuggestionNewest
+          .replace('{name}', sorted[0].name)
+          .replace('{time}', formatRelative(sorted[0].lastModified!, t._lang as 'zh' | 'en'))
+      );
+    }
+    // 计算可释放空间
+    const freeableSize = sorted
+      .slice(1)
+      .reduce((sum, p) => sum + (details.get(p.path)?.totalSize ?? 0), 0);
+    if (freeableSize > 0) {
+      suggestions.push(
+        t.duplicateSuggestionFreeable.replace('{size}', formatBytes(freeableSize))
+      );
     }
   }
 

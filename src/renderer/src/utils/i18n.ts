@@ -164,6 +164,10 @@ const zh: Record<string, string> = {
   duplicateClean: '清理构建产物',
   duplicateSuggestionUnpushed: '「{name}」有 {count} 个未推送的 commit，建议先推送再决定',
   duplicateSuggestionSafe: '「{name}」较新且已同步远程，「{other}」可安全归档',
+  duplicateSuggestionNewest: '「{name}」是最新副本（最后 commit {time}），建议保留',
+  duplicateSuggestionFreeable: '归档其余副本可释放约 {size} 磁盘空间',
+  duplicateSuggestionAllSynced: '所有副本均已同步远程，可放心归档任意旧副本',
+  duplicateSuggestionDirtyWarn: '「{name}」有未提交修改，请先处理后再归档',
   duplicateClose: '关闭',
 
   // --- 来源标签 ---
@@ -373,6 +377,10 @@ const en: Record<string, string> = {
   duplicateClean: 'Clean build artifacts',
   duplicateSuggestionUnpushed: '"{name}" has {count} unpushed commits — push first before deciding',
   duplicateSuggestionSafe: '"{name}" is newer and synced — "{other}" can be safely archived',
+  duplicateSuggestionNewest: '"{name}" is the newest copy (last commit {time}) — recommend keeping',
+  duplicateSuggestionFreeable: 'Archiving other copies can free up ~{size} of disk space',
+  duplicateSuggestionAllSynced: 'All copies are synced with remote — safe to archive any older copy',
+  duplicateSuggestionDirtyWarn: '"{name}" has uncommitted changes — handle before archiving',
   duplicateClose: 'Close',
 
   providerGithub: 'From GitHub, can re-clone',
