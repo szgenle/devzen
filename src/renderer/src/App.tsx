@@ -1,22 +1,26 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { CleanResult, ProjectInfo, ScanProgress } from '@shared/types';
 import { ProjectList } from './components/ProjectList';
-import { Toolbar } from './components/Toolbar';
-import { StatusBar } from './components/StatusBar';
+import { HomeScreen } from './components/HomeScreen';
+import { ScanScreen } from './components/ScanScreen';
+import { ResultsHeader } from './components/ResultsHeader';
+import { ActionBar } from './components/ActionBar';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { formatBytes } from './utils/format';
 
+type View = 'home' | 'scanning' | 'results';
+
 export function App() {
+  const [view, setView] = useState<View>('home');
   const [rootDir, setRootDir] = useState<string | null>(null);
   const [projects, setProjects] = useState<ProjectInfo[]>([]);
-  const [scanning, setScanning] = useState(false);
   const [progress, setProgress] = useState<ScanProgress | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [cleaning, setCleaning] = useState(false);
   const [lastResults, setLastResults] = useState<CleanResult[] | null>(null);
 
-  // 启动时拿到默认主目录建议，省去手动选择目录的步骤
+  // 启动时拿到默认主目录建议，省去手动选择
   useEffect(() => {
     window.devzen.getDefaultRootDir().then((dir) => {
       setRootDir((curr) => curr ?? dir);
@@ -36,17 +40,28 @@ export function App() {
 
   const handleScan = useCallback(async () => {
     if (!rootDir) return;
-    setScanning(true);
+    setView('scanning');
     setProjects([]);
     setSelected(new Set());
+    setLastResults(null);
     setProgress({ scannedDirs: 0, foundProjects: 0, currentPath: rootDir });
     try {
       const list = await window.devzen.scanProjects(rootDir);
       setProjects(list);
-    } finally {
-      setScanning(false);
+      setView('results');
+    } catch {
+      setView('home');
     }
   }, [rootDir]);
+
+  // 返回首页：清空当前结果与选择，便于换目录重新开始
+  const handleBackHome = useCallback(() => {
+    setView('home');
+    setProjects([]);
+    setSelected(new Set());
+    setProgress(null);
+    setLastResults(null);
+  }, []);
 
   const totalCleanable = useMemo(
     () => projects.reduce((s, p) => s + p.cleanableSize, 0),
@@ -63,11 +78,10 @@ export function App() {
     return total;
   }, [projects, selected]);
 
-  /** 选中集中所属项目中，无远程备份（source === 'local'）的项目。
-   *  这些项目只在本地，删了就没了，需要在清理前强提醒。
-   *  注意：这里判的是"项目本身"在本地唯一，不是"删除项目根"。
-   *  即使只是删 node_modules，对于不懂技术的用户也需要告诉他们：
-   *  “这个项目没有远程备份，请确认你只是在清理构建产物、不是删代码。”
+  /** 选中目录所属项目中，source === 'local' 的项目。
+   *  这些项目没有远程备份，清理前需要在确认框里加强提醒。
+   *  注意：我们清理的只是构建产物目录，不会删项目根，
+   *  但仍要告知用户"这个项目只在本地"，让其知情确认。
    */
   const localOnlyProjects = useMemo(() => {
     const list: ProjectInfo[] = [];
@@ -118,66 +132,44 @@ export function App() {
   }, [selected, rootDir]);
 
   return (
-    <div className="app">
-      <Toolbar
-        rootDir={rootDir}
-        scanning={scanning}
-        cleaning={cleaning}
-        onPickDir={handlePickDir}
-        onScan={handleScan}
-        onCleanClick={() => setConfirmOpen(true)}
-        selectedCount={selected.size}
-        selectedSize={selectedSize}
-      />
+    <div className={`app app-${view}`}>
+      {view === 'home' && (
+        <HomeScreen rootDir={rootDir} onPickDir={handlePickDir} onScan={handleScan} />
+      )}
 
-      <main className="main">
-        {projects.length === 0 && !scanning && (
-          <div className="empty">
-            <h2>让你的项目一目了然</h2>
-            <p>
-              扫描你的项目目录，DevZen 会列出你有哪些项目、来自哪里、占了多少空间，
-              <br />并准确告诉你哪些构建产物可以安全删除。
-            </p>
-            {rootDir && (
-              <p className="muted truncate">
-                默认扫描路径：<code>{rootDir}</code>
-              </p>
-            )}
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button className="primary" onClick={handleScan} disabled={!rootDir}>
-                开始扫描
-              </button>
-              <button onClick={handlePickDir}>换个目录</button>
-            </div>
-          </div>
-        )}
+      {view === 'scanning' && <ScanScreen progress={progress} />}
 
-        {scanning && (
-          <div className="empty">
-            <h2>扫描中…</h2>
-            <p>已扫描目录：{progress?.scannedDirs ?? 0}</p>
-            <p>已发现项目：{progress?.foundProjects ?? 0}</p>
-            <p className="muted truncate">{progress?.currentPath ?? ''}</p>
-          </div>
-        )}
-
-        {projects.length > 0 && !scanning && (
-          <ProjectList
-            projects={projects}
-            selected={selected}
-            onToggleDir={toggleDir}
-            onToggleProject={toggleProject}
-            onReveal={(p) => window.devzen.revealInFinder(p)}
+      {view === 'results' && (
+        <>
+          <ResultsHeader
+            rootDir={rootDir}
+            cleaning={cleaning}
+            onBackHome={handleBackHome}
+            onRescan={handleScan}
           />
-        )}
-      </main>
 
-      <StatusBar
-        projectCount={projects.length}
-        totalCleanable={totalCleanable}
-        selectedSize={selectedSize}
-        lastResults={lastResults}
-      />
+          <main className="main">
+            <ProjectList
+              projects={projects}
+              selected={selected}
+              onToggleDir={toggleDir}
+              onToggleProject={toggleProject}
+              onReveal={(p) => window.devzen.revealInFinder(p)}
+            />
+          </main>
+
+          <ActionBar
+            projectCount={projects.length}
+            totalCleanable={totalCleanable}
+            selectedCount={selected.size}
+            selectedSize={selectedSize}
+            cleaning={cleaning}
+            lastResults={lastResults}
+            onCleanClick={() => setConfirmOpen(true)}
+            onClearSelection={() => setSelected(new Set())}
+          />
+        </>
+      )}
 
       {confirmOpen && (
         <ConfirmDialog
@@ -185,8 +177,8 @@ export function App() {
           message={
             <>
               <p>
-                将删除 <strong>{selected.size}</strong> 个目录，
-                预计释放 <strong>{formatBytes(selectedSize)}</strong>。
+                将删除 <strong>{selected.size}</strong> 个目录， 预计释放{' '}
+                <strong>{formatBytes(selectedSize)}</strong>。
                 <br />
                 <span className="muted">
                   仅删除构建产物目录（node_modules、target、build 等），不会动你的源码。
