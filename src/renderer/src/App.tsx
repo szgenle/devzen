@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { CleanResult, ProjectInfo, ScanProgress } from '@shared/types';
-import { ProjectList } from './components/ProjectList';
+import { OverviewList } from './components/OverviewList';
+import { CleanupList } from './components/CleanupList';
 import { ProjectDetailPanel } from './components/ProjectDetailPanel';
 import { HomeScreen } from './components/HomeScreen';
 import { ScanScreen } from './components/ScanScreen';
@@ -25,9 +26,11 @@ import {
 } from './utils/categories';
 
 type View = 'home' | 'scanning' | 'results';
+type ResultsTab = 'overview' | 'cleanup';
 
 export function App() {
   const [view, setView] = useState<View>('home');
+  const [resultsTab, setResultsTab] = useState<ResultsTab>('overview');
   const [rootDir, setRootDir] = useState<string | null>(null);
   const [projects, setProjects] = useState<ProjectInfo[]>([]);
   const [progress, setProgress] = useState<ScanProgress | null>(null);
@@ -266,32 +269,43 @@ export function App() {
             rootDir={rootDir}
             cleaning={cleaning}
             scannedAt={scannedAt}
+            activeTab={resultsTab}
+            onTabChange={setResultsTab}
             onBackHome={handleBackHome}
             onRescan={handleScan}
           />
 
           <main className="main">
-            <ProjectList
-              projects={projects}
-              selected={selected}
-              categoryStore={categoryStore}
-              onToggleDir={toggleDir}
-              onToggleProject={toggleProject}
-              onReveal={(p) => window.devzen.revealInFinder(p)}
-              onSelectProject={(p) => setDetailProject(p)}
-            />
+            {resultsTab === 'overview' ? (
+              <OverviewList
+                projects={projects}
+                categoryStore={categoryStore}
+                onReveal={(p) => window.devzen.revealInFinder(p)}
+                onSelectProject={(p) => setDetailProject(p)}
+              />
+            ) : (
+              <CleanupList
+                projects={projects}
+                selected={selected}
+                onToggleDir={toggleDir}
+                onToggleProject={toggleProject}
+                onReveal={(p) => window.devzen.revealInFinder(p)}
+              />
+            )}
           </main>
 
-          <ActionBar
-            projectCount={projects.length}
-            totalCleanable={totalCleanable}
-            selectedCount={selected.size}
-            selectedSize={selectedSize}
-            cleaning={cleaning}
-            lastResults={lastResults}
-            onCleanClick={() => setConfirmOpen(true)}
-            onClearSelection={() => setSelected(new Set())}
-          />
+          {resultsTab === 'cleanup' && (
+            <ActionBar
+              projectCount={projects.length}
+              totalCleanable={totalCleanable}
+              selectedCount={selected.size}
+              selectedSize={selectedSize}
+              cleaning={cleaning}
+              lastResults={lastResults}
+              onCleanClick={() => setConfirmOpen(true)}
+              onClearSelection={() => setSelected(new Set())}
+            />
+          )}
         </>
       )}
 
