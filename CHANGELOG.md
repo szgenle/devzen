@@ -25,6 +25,7 @@
   - 错误捕获：检测到 `Unable to find application named` 时引导用户去详情面板切换
 - **归档系统**：归档/恢复不污染项目目录，元信息集中存储于 `userData/devzen/archives.json`
 - **国际化**：内置中英文双语
+- **应用图标**：新增 macOS 应用图标（绿色文件夹 + 放大镜），`build/icon.png` 1024×1024
 
 ### 安全
 
