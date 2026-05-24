@@ -1,4 +1,5 @@
 import { shortenPath, formatRelative } from '../utils/format';
+import type { ViewMode } from '../App';
 
 type ResultsTab = 'overview' | 'cleanup';
 
@@ -8,6 +9,8 @@ interface Props {
   /** 上次扫描完成的时间戳，用于展示数据新鲜度 */
   scannedAt: number | null;
   activeTab: ResultsTab;
+  viewMode: ViewMode;
+  onViewModeChange: (mode: ViewMode) => void;
   onTabChange: (tab: ResultsTab) => void;
   onBackHome: () => void;
   onRescan: () => void;
@@ -22,6 +25,8 @@ export function ResultsHeader({
   cleaning,
   scannedAt,
   activeTab,
+  viewMode,
+  onViewModeChange,
   onTabChange,
   onBackHome,
   onRescan
@@ -56,6 +61,24 @@ export function ResultsHeader({
         </nav>
       </div>
       <div className="results-header-right">
+        {activeTab === 'overview' && (
+          <div className="view-toggle" title="切换视图">
+            <button
+              className={`view-toggle-btn ${viewMode === 'list' ? 'active' : ''}`}
+              onClick={() => onViewModeChange('list')}
+              title="列表视图"
+            >
+              ☰
+            </button>
+            <button
+              className={`view-toggle-btn ${viewMode === 'card' ? 'active' : ''}`}
+              onClick={() => onViewModeChange('card')}
+              title="卡片视图"
+            >
+              ▦
+            </button>
+          </div>
+        )}
         <span className="root-path" title={rootDir ?? ''}>
           {rootDir ? shortenPath(rootDir, 50) : ''}
         </span>

@@ -27,6 +27,16 @@ import {
 
 type View = 'home' | 'scanning' | 'results';
 type ResultsTab = 'overview' | 'cleanup';
+export type ViewMode = 'list' | 'card';
+
+const VIEW_MODE_KEY = 'devzen.viewMode.v1';
+function loadViewMode(): ViewMode {
+  const v = localStorage.getItem(VIEW_MODE_KEY);
+  return v === 'card' ? 'card' : 'list';
+}
+function saveViewMode(mode: ViewMode): void {
+  localStorage.setItem(VIEW_MODE_KEY, mode);
+}
 
 export function App() {
   const [view, setView] = useState<View>('home');
@@ -44,6 +54,8 @@ export function App() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   // 项目分类存档（内置分类 + 自定义分类 + 项目分配）
   const [categoryStore, setCategoryStore] = useState<CategoryStore>(() => loadStore());
+  // 概览页视图模式：列表 / 卡片
+  const [viewMode, setViewMode] = useState<ViewMode>(loadViewMode);
   // 当前打开详情侧边栏的项目；null 表示未打开
   const [detailProject, setDetailProject] = useState<ProjectInfo | null>(null);
 
@@ -135,6 +147,11 @@ export function App() {
     setProgress(null);
     setLastResults(null);
     setDetailProject(null);
+  }, []);
+
+  const handleViewModeChange = useCallback((mode: ViewMode) => {
+    setViewMode(mode);
+    saveViewMode(mode);
   }, []);
 
   // ---------------- 分类管理 ----------------
@@ -270,6 +287,8 @@ export function App() {
             cleaning={cleaning}
             scannedAt={scannedAt}
             activeTab={resultsTab}
+            viewMode={viewMode}
+            onViewModeChange={handleViewModeChange}
             onTabChange={setResultsTab}
             onBackHome={handleBackHome}
             onRescan={handleScan}
@@ -280,6 +299,7 @@ export function App() {
               <OverviewList
                 projects={projects}
                 categoryStore={categoryStore}
+                viewMode={viewMode}
                 onReveal={(p) => window.devzen.revealInFinder(p)}
                 onSelectProject={(p) => setDetailProject(p)}
               />

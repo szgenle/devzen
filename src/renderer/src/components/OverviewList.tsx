@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import type { ProjectInfo, ProjectSource } from '@shared/types';
+import type { ViewMode } from '../App';
 import { formatRelative, shortenPath } from '../utils/format';
 import {
   type Category,
@@ -11,6 +12,7 @@ import {
 interface Props {
   projects: ProjectInfo[];
   categoryStore: CategoryStore;
+  viewMode: ViewMode;
   onReveal: (path: string) => void;
   onSelectProject: (p: ProjectInfo) => void;
 }
@@ -43,7 +45,7 @@ interface Group {
  * 只展示"你有哪些项目"相关信息：名称、描述、来源、生态、路径。
  * 不涉及清理操作（无 checkbox、无可清理大小）。
  */
-export function OverviewList({ projects, categoryStore, onReveal, onSelectProject }: Props) {
+export function OverviewList({ projects, categoryStore, viewMode, onReveal, onSelectProject }: Props) {
   const groups = useMemo<Group[]>(() => {
     const all = getAllCategories(categoryStore);
     const map = new Map<string, ProjectInfo[]>();
@@ -72,21 +74,34 @@ export function OverviewList({ projects, categoryStore, onReveal, onSelectProjec
   }
 
   return (
-    <div className="overview-list">
+    <div className={`overview-list ${viewMode === 'card' ? 'overview-card-mode' : ''}`}>
       {groups.map((g) => (
         <section key={g.category.id} className="overview-group">
           <header className="overview-group-head">
             <span className="group-name">{g.category.name}</span>
             <span className="group-count">{g.projects.length} 个项目</span>
           </header>
-          {g.projects.map((p) => (
-            <OverviewRow
-              key={p.path}
-              project={p}
-              onReveal={onReveal}
-              onSelect={() => onSelectProject(p)}
-            />
-          ))}
+          {viewMode === 'card' ? (
+            <div className="overview-card-grid">
+              {g.projects.map((p) => (
+                <OverviewCard
+                  key={p.path}
+                  project={p}
+                  onReveal={onReveal}
+                  onSelect={() => onSelectProject(p)}
+                />
+              ))}
+            </div>
+          ) : (
+            g.projects.map((p) => (
+              <OverviewRow
+                key={p.path}
+                project={p}
+                onReveal={onReveal}
+                onSelect={() => onSelectProject(p)}
+              />
+            ))
+          )}
         </section>
       ))}
     </div>
@@ -139,6 +154,51 @@ function OverviewRow({ project, onReveal, onSelect }: RowProps) {
             <span>· {formatRelative(project.lastModified)}</span>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function OverviewCard({ project, onReveal, onSelect }: RowProps) {
+  const sourceMeta = SOURCE_META[project.source];
+
+  return (
+    <div className="overview-card" onClick={onSelect} title="查看详情 / 修改分类">
+      <div className="overview-card-header">
+        <span className="project-name">{project.name}</span>
+        <span className={`tag ${sourceMeta.cls}`} title={sourceMeta.title}>
+          {sourceMeta.label}
+        </span>
+      </div>
+      <div className="overview-card-tags">
+        {project.ecosystems.map((e) => (
+          <span key={e} className={`tag tag-${e}`}>
+            {ECO_LABELS[e] ?? e}
+          </span>
+        ))}
+        {project.gitDirty && (
+          <span className="tag tag-dirty" title="有未提交的修改">
+            有修改
+          </span>
+        )}
+      </div>
+      {project.description && (
+        <div className="overview-card-desc muted">{project.description}</div>
+      )}
+      <div className="overview-card-footer muted">
+        <span
+          className="path"
+          title={project.path}
+          onClick={(e) => {
+            e.stopPropagation();
+            onReveal(project.path);
+          }}
+        >
+          {shortenPath(project.path, 40)}
+        </span>
+        {project.lastModified && (
+          <span className="overview-card-time">{formatRelative(project.lastModified)}</span>
+        )}
       </div>
     </div>
   );
