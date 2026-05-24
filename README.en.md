@@ -39,6 +39,20 @@ Any developer drowning in "too many messy projects" — especially people withou
 - React 18 + TypeScript
 - Main process uses Node.js built-ins only for scanning and cleanup
 
+## 📦 Install
+
+Download the latest `.dmg` from [Releases](https://github.com/szgenle/devzen/releases) and drag it into Applications.
+
+> ⚠️ **First-launch note**: The build is **ad-hoc signed** (not Apple-notarized) — this is common for small open-source projects. Gatekeeper will block the first launch. Use either:
+>
+> - **Option 1**: In Finder → Applications, **right-click DevZen → Open → Open** (only the first time)
+> - **Option 2**: Strip the quarantine attribute via Terminal:
+>   ```bash
+>   xattr -cr /Applications/DevZen.app
+>   ```
+>
+> If you'd rather avoid this step, build from source (see the "Development" section below).
+
 ## 🚀 Development
 
 ```bash
@@ -51,7 +65,7 @@ npm run dev
 # Typecheck
 npm run typecheck
 
-# Build & package for macOS
+# Build & package for macOS (artifacts in dist/)
 npm run dist:mac
 ```
 

@@ -39,6 +39,20 @@
 - React 18 + TypeScript
 - 主进程仅依赖 Node.js 内置模块进行扫描与清理
 
+## 📦 安装
+
+到 [Releases](https://github.com/szgenle/devzen/releases) 页面下载最新的 `.dmg`，双击安装即可。
+
+> ⚠️ **首次打开提示**：当前版本采用 ad-hoc 签名（未走 Apple 公证），属于开源项目常见做法。首次打开会被 Gatekeeper 拦截，按以下任一方式处理：
+>
+> - **方式一**：在「应用程序」中找到 DevZen，**右键 → 打开 → 仍要打开**（仅首次需要）
+> - **方式二**：终端执行一条命令清除隔离属性
+>   ```bash
+>   xattr -cr /Applications/DevZen.app
+>   ```
+>
+> 如果你介意这个步骤，也可以走源码自构建（见下方「开发」段）。
+
 ## 🚀 开发
 
 ```bash
@@ -51,7 +65,7 @@ npm run dev
 # 类型检查
 npm run typecheck
 
-# 打包 macOS
+# 打包 macOS（产物在 dist/ 目录）
 npm run dist:mac
 ```
 
