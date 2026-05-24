@@ -216,8 +216,61 @@ async function buildProjectInfo(
     lastModified,
     cleanables,
     cleanableSize,
-    duplicateGroup: null
+    duplicateGroup: null,
+    suggestedEditor: inferSuggestedEditor(entries, ecosystems)
   };
+}
+
+/**
+ * 根据项目根目录条目和生态推断"默认启动编辑器"。
+ *
+ * 优先级：用户主动添加的 AI 编辑器配置 > 苹果原生工程 > JetBrains 系（按生态二次推断）> 通用 IDE。
+ * 未命中任何特征时返回 undefined，渲染层会回退到 DEFAULT_EDITOR。
+ *
+ * marker 来源：
+ *  - .qoder/        → Qoder（项目内 RepoWiki 缓存目录）
+ *  - .trae/         → Trae（rules/ 或 settings.json）
+ *  - .cursor/ 或 .cursorrules → Cursor
+ *  - .windsurf/ 或 .windsurfrules → Windsurf
+ *  - *.xcworkspace / *.xcodeproj → Xcode
+ *  - .idea/         → JetBrains 系（按 ecosystems 选具体产品）
+ *  - .vscode/       → Visual Studio Code
+ */
+function inferSuggestedEditor(
+  entries: import('node:fs').Dirent[],
+  ecosystems: EcosystemId[]
+): string | undefined {
+  const isDir = (name: string) =>
+    entries.some((e) => e.name === name && e.isDirectory());
+  const isFile = (name: string) =>
+    entries.some((e) => e.name === name && e.isFile());
+  const hasSuffixDir = (suffix: string) =>
+    entries.some((e) => e.name.endsWith(suffix) && e.isDirectory());
+
+  // 1. AI 编辑器特征（用户主动添加，独占性最高）
+  if (isDir('.qoder')) return 'Qoder';
+  if (isDir('.trae')) return 'Trae';
+  if (isDir('.cursor') || isFile('.cursorrules')) return 'Cursor';
+  if (isDir('.windsurf') || isFile('.windsurfrules')) return 'Windsurf';
+
+  // 2. 苹果原生工程
+  if (hasSuffixDir('.xcworkspace') || hasSuffixDir('.xcodeproj')) return 'Xcode';
+
+  // 3. JetBrains 系：按生态二次推断；无法精确分辨时按 IntelliJ IDEA 兜底
+  if (isDir('.idea')) {
+    if (ecosystems.includes('android')) return 'Android Studio';
+    if (ecosystems.includes('go')) return 'GoLand';
+    if (ecosystems.includes('python')) return 'PyCharm';
+    if (ecosystems.includes('java-maven') || ecosystems.includes('java-gradle'))
+      return 'IntelliJ IDEA';
+    if (ecosystems.includes('node')) return 'WebStorm';
+    return 'IntelliJ IDEA';
+  }
+
+  // 4. 通用 IDE
+  if (isDir('.vscode')) return 'Visual Studio Code';
+
+  return undefined;
 }
 
 /** 探测项目下所有可清理目录及其大小 */

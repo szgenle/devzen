@@ -8,7 +8,47 @@ import {
   getAllCategories,
   getProjectCategoryId
 } from '../utils/categories';
+import { getDefaultEditor } from '../utils/launchApps';
 import type { Messages } from '../utils/i18n';
+
+/**
+ * 项目名前面的"用编辑器打开"按钮。
+ * 视觉是文件夹图标，语义和 Finder 里"双击文件夹打开"一致。
+ * 点击事件不冒泡，避免触发外层的"打开详情"。
+ */
+function OpenInEditorButton({
+  project,
+  t,
+  onOpenWithEditor
+}: {
+  project: ProjectInfo;
+  t: Messages;
+  onOpenWithEditor: (p: ProjectInfo, app: string) => void;
+}) {
+  const editorApp = getDefaultEditor(project);
+  const title = `${t.detailLaunchEditorPrefix} ${editorApp} ${t.detailLaunchEditorSuffix}`.trim();
+  return (
+    <button
+      type="button"
+      className="project-open-btn"
+      title={title}
+      aria-label={title}
+      onClick={(e) => {
+        e.stopPropagation();
+        onOpenWithEditor(project, editorApp);
+      }}
+    >
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <path
+          d="M1.5 4.5a1 1 0 0 1 1-1H6l1.5 1.5h6a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1v-7.5z"
+          stroke="currentColor"
+          strokeWidth="1.2"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </button>
+  );
+}
 
 interface Props {
   projects: ProjectInfo[];
@@ -18,6 +58,8 @@ interface Props {
   onReveal: (path: string) => void;
   onSelectProject: (p: ProjectInfo) => void;
   onCompareDuplicates: (groupId: string) => void;
+  /** 点击项目名时直接用编辑器打开（应用名由 launchApps 的项目级记忆决定） */
+  onOpenWithEditor: (p: ProjectInfo, app: string) => void;
 }
 
 /** 每个远程提供商的 label + 对应的 i18n title key */
@@ -53,7 +95,16 @@ interface Group {
  * 只展示"你有哪些项目"相关信息：名称、描述、来源、生态、路径。
  * 不涉及清理操作（无 checkbox、无可清理大小）。
  */
-export function OverviewList({ projects, categoryStore, viewMode, t, onReveal, onSelectProject, onCompareDuplicates }: Props) {
+export function OverviewList({
+  projects,
+  categoryStore,
+  viewMode,
+  t,
+  onReveal,
+  onSelectProject,
+  onCompareDuplicates,
+  onOpenWithEditor
+}: Props) {
   const groups = useMemo<Group[]>(() => {
     const all = getAllCategories(categoryStore);
     const map = new Map<string, ProjectInfo[]>();
@@ -99,6 +150,7 @@ export function OverviewList({ projects, categoryStore, viewMode, t, onReveal, o
                   onReveal={onReveal}
                   onSelect={() => onSelectProject(p)}
                   onCompareDuplicates={onCompareDuplicates}
+                  onOpenWithEditor={onOpenWithEditor}
                 />
               ))}
             </div>
@@ -111,6 +163,7 @@ export function OverviewList({ projects, categoryStore, viewMode, t, onReveal, o
                 onReveal={onReveal}
                 onSelect={() => onSelectProject(p)}
                 onCompareDuplicates={onCompareDuplicates}
+                onOpenWithEditor={onOpenWithEditor}
               />
             ))
           )}
@@ -126,9 +179,10 @@ interface RowProps {
   onReveal: (path: string) => void;
   onSelect: () => void;
   onCompareDuplicates: (groupId: string) => void;
+  onOpenWithEditor: (p: ProjectInfo, app: string) => void;
 }
 
-function OverviewRow({ project, t, onReveal, onSelect, onCompareDuplicates }: RowProps) {
+function OverviewRow({ project, t, onReveal, onSelect, onCompareDuplicates, onOpenWithEditor }: RowProps) {
   const sourceTags =
     project.remoteProviders.length > 0
       ? project.remoteProviders.map((p) => {
@@ -143,6 +197,7 @@ function OverviewRow({ project, t, onReveal, onSelect, onCompareDuplicates }: Ro
     <div className="overview-row" onClick={onSelect} title={t.overviewViewDetail}>
       <div className="overview-row-main">
         <div className="overview-name-row">
+          <OpenInEditorButton project={project} t={t} onOpenWithEditor={onOpenWithEditor} />
           <span className="project-name">{project.name}</span>
           {dupGroup && (
             <span
@@ -195,7 +250,7 @@ function OverviewRow({ project, t, onReveal, onSelect, onCompareDuplicates }: Ro
   );
 }
 
-function OverviewCard({ project, t, onReveal, onSelect, onCompareDuplicates }: RowProps) {
+function OverviewCard({ project, t, onReveal, onSelect, onCompareDuplicates, onOpenWithEditor }: RowProps) {
   const sourceTags =
     project.remoteProviders.length > 0
       ? project.remoteProviders.map((p) => {
@@ -209,6 +264,7 @@ function OverviewCard({ project, t, onReveal, onSelect, onCompareDuplicates }: R
   return (
     <div className="overview-card" onClick={onSelect} title={t.overviewViewDetail}>
       <div className="overview-card-header">
+        <OpenInEditorButton project={project} t={t} onOpenWithEditor={onOpenWithEditor} />
         <span className="project-name">{project.name}</span>
         {dupGroup && (
           <span

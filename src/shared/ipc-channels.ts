@@ -11,5 +11,7 @@ export const IpcChannels = {
   ListArchives: 'devzen:listArchives',
   RestoreProject: 'devzen:restoreProject',
   ForgetArchive: 'devzen:forgetArchive',
-  GetProjectDetail: 'devzen:getProjectDetail'
+  GetProjectDetail: 'devzen:getProjectDetail',
+  OpenWithEditor: 'devzen:openWithEditor',
+  OpenWithTerminal: 'devzen:openWithTerminal'
 } as const;

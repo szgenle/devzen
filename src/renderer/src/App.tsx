@@ -46,6 +46,7 @@ import {
   type ThemeMode,
   type Lang
 } from './utils/preferences';
+import { setRecentEditor, setRecentTerminal } from './utils/launchApps';
 import { getMessages } from './utils/i18n';
 
 type View = 'home' | 'scanning' | 'results' | 'settings' | 'archives';
@@ -228,6 +229,34 @@ export function App() {
       return next;
     });
   }, []);
+
+  /** 用指定的 macOS 应用打开项目目录（编辑器场景）；失败用 alert 反馈 */
+  const handleOpenWithEditor = useCallback(
+    async (project: ProjectInfo, app: string) => {
+      try {
+        await window.devzen.openWithEditor(project.path, app);
+        setRecentEditor(project.path, app);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        alert(t.detailLaunchFailed.replace('{err}', msg));
+      }
+    },
+    [t]
+  );
+
+  /** 用指定的 macOS 应用打开项目目录（终端场景）；失败用 alert 反馈 */
+  const handleOpenWithTerminal = useCallback(
+    async (project: ProjectInfo, app: string) => {
+      try {
+        await window.devzen.openWithTerminal(project.path, app);
+        setRecentTerminal(project.path, app);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        alert(t.detailLaunchFailed.replace('{err}', msg));
+      }
+    },
+    [t]
+  );
 
   const handleOpenSettings = useCallback(() => setView('settings'), []);
   const handleBackFromSettings = useCallback(() => setView('home'), []);
@@ -537,6 +566,7 @@ export function App() {
                     onReveal={(p: string) => window.devzen.revealInFinder(p)}
                     onSelectProject={(p: ProjectInfo) => setDetailProject(p)}
                     onCompareDuplicates={handleCompareDuplicates}
+                    onOpenWithEditor={handleOpenWithEditor}
                   />
                 )}
               </>
@@ -584,6 +614,8 @@ export function App() {
         onDeleteTag={handleDeleteTag}
         onReveal={(p) => window.devzen.revealInFinder(p)}
         onArchive={handleOpenArchive}
+        onOpenWithEditor={handleOpenWithEditor}
+        onOpenWithTerminal={handleOpenWithTerminal}
       />
 
       {confirmOpen && (

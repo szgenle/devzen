@@ -1071,6 +1071,32 @@ button.ghost-btn:hover:not(:disabled) {
 .project-name {
   font-weight: 600;
 }
+/*
+ * 项目名前面的"用编辑器打开"按钮 — 文件夹图标。
+ * 默认次要色，hover 变主题色。点击不冒泡，行/卡片其他位置仍打开详情面板。
+ */
+.project-open-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: 5px;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+  flex-shrink: 0;
+}
+.project-open-btn:hover {
+  color: var(--accent);
+  background: var(--bg-elev-2, rgba(127, 127, 127, 0.12));
+}
+.project-open-btn:active {
+  transform: scale(0.94);
+}
 .project-sub {
   display: flex;
   align-items: center;
@@ -1767,6 +1793,116 @@ button.ghost-btn:hover:not(:disabled) {
 }
 
 /* ---------------- Archive / Restore ---------------- */
+
+/* 详情面板的快速启动区块 */
+.detail-launch-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+/* 单个启动控件（主按钮+▾+下拉菜单容器） */
+.detail-launch-control {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+}
+/* 主按钮 + ▾ 紧贴在一起的按钮组 */
+.detail-launch-group {
+  display: inline-flex;
+  align-items: stretch;
+}
+.detail-launch-btn {
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  padding: 7px 14px;
+}
+.detail-launch-btn-primary {
+  border-radius: 8px 0 0 8px;
+  border-right: none;
+}
+.detail-launch-btn-toggle {
+  border-radius: 0 8px 8px 0;
+  padding: 7px 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.detail-launch-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.detail-launch-btn-primary:hover + .detail-launch-btn-toggle,
+.detail-launch-btn-toggle:hover {
+  border-color: var(--accent);
+}
+.detail-launch-prefix {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+.detail-launch-app-name {
+  font-weight: 600;
+}
+
+/* 切换菜单 */
+.detail-launch-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 20;
+  min-width: 200px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.detail-launch-menu-head {
+  padding: 6px 10px 4px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.detail-launch-menu-item {
+  text-align: left;
+  padding: 6px 10px;
+  font-size: 13px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.detail-launch-menu-item:hover {
+  background: var(--bg-hover);
+  color: var(--accent);
+}
+.detail-launch-menu-item.active {
+  background: var(--bg-hover);
+  color: var(--accent);
+  font-weight: 600;
+}
+.detail-launch-menu-sep {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 6px;
+}
+.detail-launch-menu-custom {
+  font-style: italic;
+  color: var(--text-muted);
+}
 
 /* 详情面板的归档按钮 */
 .detail-archive-btn {

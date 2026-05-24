@@ -83,6 +83,12 @@ export interface ProjectInfo {
   cleanableSize: number;
   /** 所属重复组（扫描后由 grouping 逻辑填充；无重复则为 null） */
   duplicateGroup: DuplicateGroup | null;
+  /**
+   * 根据项目根目录特征文件推断的"建议编辑器"（macOS .app 名）。
+   * 例：存在 .qoder/ → 'Qoder'；.trae/ → 'Trae'；.cursor/ 或 .cursorrules → 'Cursor'。
+   * 未识别到任何特征时为 undefined。仅作渲染层的"默认启动应用"兜底建议，用户实际选过的会覆盖。
+   */
+  suggestedEditor?: string;
 }
 
 /** 扫描进度事件 */
@@ -192,6 +198,10 @@ export interface DevZenAPI {
   forgetArchive(path: string): Promise<void>;
   /** 获取项目详细信息（按需加载，用于重复对比视图） */
   getProjectDetail(path: string): Promise<ProjectDetail>;
+  /** 用指定 macOS 应用打开项目目录（编辑器场景，例如 "Visual Studio Code"）；空串表示用系统默认行为 `open path` */
+  openWithEditor(path: string, editor: string): Promise<void>;
+  /** 在指定终端应用中打开项目目录（例如 "Terminal" / "iTerm" / "Warp"） */
+  openWithTerminal(path: string, terminal: string): Promise<void>;
 }
 
 declare global {

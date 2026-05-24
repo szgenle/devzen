@@ -51,7 +51,13 @@ const api: DevZenAPI = {
     ipcRenderer.invoke(IpcChannels.ForgetArchive, target) as Promise<void>,
 
   getProjectDetail: (target: string) =>
-    ipcRenderer.invoke(IpcChannels.GetProjectDetail, target) as Promise<ProjectDetail>
+    ipcRenderer.invoke(IpcChannels.GetProjectDetail, target) as Promise<ProjectDetail>,
+
+  openWithEditor: (target: string, editor: string) =>
+    ipcRenderer.invoke(IpcChannels.OpenWithEditor, target, editor) as Promise<void>,
+
+  openWithTerminal: (target: string, terminal: string) =>
+    ipcRenderer.invoke(IpcChannels.OpenWithTerminal, target, terminal) as Promise<void>
 };
 
 contextBridge.exposeInMainWorld('devzen', api);

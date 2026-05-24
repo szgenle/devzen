@@ -8,6 +8,12 @@ import {
   getProjectCategoryId
 } from '../utils/categories';
 import { type Tag, type TagStore, getAllTags, getProjectTags } from '../utils/tags';
+import {
+  COMMON_EDITORS,
+  COMMON_TERMINALS,
+  getDefaultEditor,
+  getDefaultTerminal
+} from '../utils/launchApps';
 import type { Messages } from '../utils/i18n';
 
 interface Props {
@@ -27,6 +33,10 @@ interface Props {
   onReveal: (path: string) => void;
   /** 触发归档流程；source === 'local' 时上层应不触发，仅作兜底 */
   onArchive: (project: ProjectInfo) => void;
+  /** 用指定 macOS 应用打开项目目录（编辑器） */
+  onOpenWithEditor: (project: ProjectInfo, app: string) => void;
+  /** 用指定 macOS 应用打开项目目录（终端） */
+  onOpenWithTerminal: (project: ProjectInfo, app: string) => void;
 }
 
 /** 每个远程提供商的 i18n key 映射 */
@@ -76,7 +86,9 @@ export function ProjectDetailPanel({
   onCreateTag,
   onDeleteTag,
   onReveal,
-  onArchive
+  onArchive,
+  onOpenWithEditor,
+  onOpenWithTerminal
 }: Props) {
   // 受控显隐：项目存在时打开，便于做退场动画
   const open = project != null;
@@ -84,6 +96,8 @@ export function ProjectDetailPanel({
   const [newName, setNewName] = useState('');
   const [creatingTag, setCreatingTag] = useState(false);
   const [newTagName, setNewTagName] = useState('');
+  // 快速启动菜单：'editor' / 'terminal' / null
+  const [launchMenu, setLaunchMenu] = useState<'editor' | 'terminal' | null>(null);
 
   // 切换不同项目时收起新建态，避免输入残留
   useEffect(() => {
@@ -91,6 +105,7 @@ export function ProjectDetailPanel({
     setNewName('');
     setCreatingTag(false);
     setNewTagName('');
+    setLaunchMenu(null);
   }, [project?.path]);
 
   // 关闭时按 ESC
@@ -382,6 +397,61 @@ export function ProjectDetailPanel({
         </section>
 
         <section className="detail-section">
+          <div className="detail-label">{t.detailLaunch}</div>
+          <div className="detail-launch-row">
+            <LaunchControl
+              kind="editor"
+              currentApp={getDefaultEditor(project)}
+              options={COMMON_EDITORS}
+              menuOpen={launchMenu === 'editor'}
+              t={t}
+              onOpen={(app) => {
+                setLaunchMenu(null);
+                onOpenWithEditor(project, app);
+              }}
+              onToggleMenu={() =>
+                setLaunchMenu(launchMenu === 'editor' ? null : 'editor')
+              }
+              onPickCustom={() => {
+                const ans = window.prompt(
+                  t.detailLaunchCustomEditorPrompt,
+                  getDefaultEditor(project)
+                );
+                if (ans && ans.trim()) {
+                  setLaunchMenu(null);
+                  onOpenWithEditor(project, ans.trim());
+                }
+              }}
+            />
+            <LaunchControl
+              kind="terminal"
+              currentApp={getDefaultTerminal(project)}
+              options={COMMON_TERMINALS}
+              menuOpen={launchMenu === 'terminal'}
+              t={t}
+              onOpen={(app) => {
+                setLaunchMenu(null);
+                onOpenWithTerminal(project, app);
+              }}
+              onToggleMenu={() =>
+                setLaunchMenu(launchMenu === 'terminal' ? null : 'terminal')
+              }
+              onPickCustom={() => {
+                const ans = window.prompt(
+                  t.detailLaunchCustomTerminalPrompt,
+                  getDefaultTerminal(project)
+                );
+                if (ans && ans.trim()) {
+                  setLaunchMenu(null);
+                  onOpenWithTerminal(project, ans.trim());
+                }
+              }}
+            />
+          </div>
+          <div className="muted detail-hint">{t.detailLaunchHint}</div>
+        </section>
+
+        <section className="detail-section">
           <div className="detail-label">{t.archiveBtn}</div>
           {project.source === 'local' ? (
             <div className="muted detail-hint">{t.archiveBtnLocal}</div>
@@ -434,5 +504,80 @@ function CategoryChip({ category, active, t, onPick, onRemove }: ChipProps) {
         </button>
       )}
     </span>
+  );
+}
+
+/**
+ * 快速启动控件：主按钮（直接用当前应用打开） + ▾ 切换按钮（弹出可选应用列表）。
+ * 应用选择按项目记忆，不在全局首选项中固定。
+ */
+function LaunchControl({
+  kind,
+  currentApp,
+  options,
+  menuOpen,
+  t,
+  onOpen,
+  onToggleMenu,
+  onPickCustom
+}: {
+  kind: 'editor' | 'terminal';
+  currentApp: string;
+  options: readonly string[];
+  menuOpen: boolean;
+  t: Messages;
+  onOpen: (app: string) => void;
+  onToggleMenu: () => void;
+  onPickCustom: () => void;
+}) {
+  const prefix = kind === 'editor' ? t.detailLaunchEditorPrefix : t.detailLaunchTerminalPrefix;
+  const suffix = kind === 'editor' ? t.detailLaunchEditorSuffix : t.detailLaunchTerminalSuffix;
+  const pickLabel = kind === 'editor' ? t.detailLaunchPickEditor : t.detailLaunchPickTerminal;
+
+  return (
+    <div className="detail-launch-control">
+      <div className="detail-launch-group">
+        <button
+          className="detail-launch-btn detail-launch-btn-primary"
+          onClick={() => onOpen(currentApp)}
+          title={`${prefix} ${currentApp} ${suffix}`.trim()}
+        >
+          <span className="detail-launch-prefix">{prefix}</span>
+          <span className="detail-launch-app-name"> {currentApp} </span>
+          {suffix && <span className="detail-launch-prefix">{suffix}</span>}
+        </button>
+        <button
+          className="detail-launch-btn detail-launch-btn-toggle"
+          onClick={onToggleMenu}
+          title={t.detailLaunchSwitch}
+          aria-expanded={menuOpen}
+        >
+          ▾
+        </button>
+      </div>
+      {menuOpen && (
+        <div className="detail-launch-menu" role="menu">
+          <div className="detail-launch-menu-head muted">{pickLabel}</div>
+          {options.map((app) => (
+            <button
+              key={app}
+              role="menuitem"
+              className={`detail-launch-menu-item ${app === currentApp ? 'active' : ''}`}
+              onClick={() => onOpen(app)}
+            >
+              {app}
+            </button>
+          ))}
+          <div className="detail-launch-menu-sep" />
+          <button
+            role="menuitem"
+            className="detail-launch-menu-item detail-launch-menu-custom"
+            onClick={onPickCustom}
+          >
+            {t.detailLaunchCustomEditor}
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
