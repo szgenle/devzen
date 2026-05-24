@@ -120,10 +120,11 @@ async function buildProjectInfo(
   const cleanableSize = cleanables.reduce((s, c) => s + c.size, 0);
   const isGitRepo = entries.some((e) => e.name === '.git');
   const gitRemote = isGitRepo ? await readGitRemote(dir) : null;
+  const allRemoteUrls = isGitRepo ? await readAllGitRemoteUrls(dir) : [];
   const gitDirty = isGitRepo ? await readGitDirty(dir) : null;
   const lastModified = await readLastModified(dir, ecosystems);
   const description = await extractDescription(dir, ecosystems, entries);
-  const source = inferSource(gitRemote);
+  const source = inferSource(allRemoteUrls);
 
   return {
     path: dir,
@@ -211,6 +212,25 @@ async function readGitRemote(dir: string): Promise<string | null> {
   }
 }
 
+/** 读取所有 remote 的 fetch URL，用于来源分析（一个项目可能有 origin + upstream 等多个 remote） */
+async function readAllGitRemoteUrls(dir: string): Promise<string[]> {
+  try {
+    const { stdout } = await execAsync('git remote -v', {
+      cwd: dir,
+      timeout: 2000
+    });
+    const urls: string[] = [];
+    for (const line of stdout.split('\n')) {
+      // 格式: name\turl (fetch|push)
+      const match = line.match(/^\S+\t(.+)\s+\(fetch\)$/);
+      if (match) urls.push(match[1]);
+    }
+    return urls;
+  } catch {
+    return [];
+  }
+}
+
 /** 为已知是 git 仓库的项目检测未提交修改 */
 async function readGitDirty(dir: string): Promise<boolean | null> {
   try {
@@ -224,10 +244,10 @@ async function readGitDirty(dir: string): Promise<boolean | null> {
   }
 }
 
-/** 根据 remote URL 判定来源 */
-function inferSource(remote: string | null): ProjectSource {
-  if (!remote) return 'local';
-  if (/github\.com[:/]/i.test(remote)) return 'github';
+/** 根据所有 remote URL 判定来源：只要任一 remote 包含 github.com 就算 github */
+function inferSource(remoteUrls: string[]): ProjectSource {
+  if (remoteUrls.length === 0) return 'local';
+  if (remoteUrls.some((url) => /github\.com[:/]/i.test(url))) return 'github';
   return 'remote';
 }
 
