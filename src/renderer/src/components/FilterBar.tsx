@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import type { EcosystemId, ProjectInfo, ProjectSource } from '@shared/types';
 import type { CategoryStore } from '../utils/categories';
-import { getAllCategories, getProjectCategoryId } from '../utils/categories';
+import { getAllCategories, getCategoryDisplayName, getProjectCategoryId } from '../utils/categories';
 import { type TagStore, getAllTags, getProjectTagIds } from '../utils/tags';
 import type { Messages } from '../utils/i18n';
 
@@ -189,7 +189,7 @@ export function FilterBar({ projects, filter, categoryStore, tagStore, t, onChan
               onChange({ ...filter, categoryId: filter.categoryId === c.id ? null : c.id })
             }
           >
-            {c.name}
+            {getCategoryDisplayName(c, t)}
           </button>
         ))}
 

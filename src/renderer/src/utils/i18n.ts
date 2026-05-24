@@ -142,6 +142,12 @@ const zh: Record<string, string> = {
   filterNoResults: '没有匹配的项目，试试调整筛选条件。',
   filterTag: '标签',
 
+  // --- 内置分类名（自定义分类用用户输入原文，不走 i18n） ---
+  categoryWork: '工作',
+  categoryPersonal: '个人',
+  categoryThirdParty: '第三方',
+  categoryLocalDraft: '本地草稿',
+
   // --- 标签 ---
   tagSectionTitle: '标签',
   tagEmpty: '暂无标签',
@@ -371,6 +377,12 @@ const en: Record<string, string> = {
   filterResultCount: '{count} projects matched',
   filterNoResults: 'No projects match current filters. Try adjusting.',
   filterTag: 'Tag',
+
+  // --- Builtin category names ---
+  categoryWork: 'Work',
+  categoryPersonal: 'Personal',
+  categoryThirdParty: 'Third-party',
+  categoryLocalDraft: 'Local Draft',
 
   tagSectionTitle: 'Tags',
   tagEmpty: 'No tags yet',

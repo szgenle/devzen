@@ -1,4 +1,5 @@
 import type { ArchiveRecord, ProjectInfo, ProjectSource } from '@shared/types';
+import type { Messages } from './i18n';
 
 /**
  * 项目分类（主分类）本地存档。
@@ -126,6 +127,27 @@ export function getArchiveCategoryId(rec: ArchiveRecord, store: CategoryStore): 
 
 export function findCategory(id: string, store: CategoryStore): Category | null {
   return getAllCategories(store).find((c) => c.id === id) ?? null;
+}
+
+/**
+ * 取分类的"显示名"。
+ * 内置分类的 name 字段是中文（历史遗留），渲染时按当前语言走 i18n；
+ * 用户自定义分类用用户输入原文，不翻译。
+ */
+export function getCategoryDisplayName(category: Category, t: Messages): string {
+  if (!category.builtin) return category.name;
+  switch (category.id) {
+    case BUILTIN_IDS.work:
+      return t.categoryWork;
+    case BUILTIN_IDS.personal:
+      return t.categoryPersonal;
+    case BUILTIN_IDS.thirdParty:
+      return t.categoryThirdParty;
+    case BUILTIN_IDS.localDraft:
+      return t.categoryLocalDraft;
+    default:
+      return category.name;
+  }
 }
 
 /** 设置项目分类（手动覆盖）。返回更新后的 store。 */

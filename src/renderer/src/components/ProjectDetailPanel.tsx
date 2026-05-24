@@ -5,6 +5,7 @@ import {
   type Category,
   type CategoryStore,
   getAllCategories,
+  getCategoryDisplayName,
   getProjectCategoryId
 } from '../utils/categories';
 import { type Tag, type TagStore, getAllTags, getProjectTags } from '../utils/tags';
@@ -162,7 +163,7 @@ export function ProjectDetailPanel({
         <section className="detail-section">
           <div className="detail-label">{t.detailCategory}</div>
           <div className="category-current">
-            <span className="category-pill">{currentCategory?.name ?? t.detailUncategorized}</span>
+            <span className="category-pill">{currentCategory ? getCategoryDisplayName(currentCategory, t) : t.detailUncategorized}</span>
             {isManual ? (
               <button
                 className="link-btn"
@@ -483,17 +484,18 @@ interface ChipProps {
 }
 
 function CategoryChip({ category, active, t, onPick, onRemove }: ChipProps) {
+  const displayName = getCategoryDisplayName(category, t);
   return (
     <span className={`category-chip ${active ? 'active' : ''}`}>
       <button className="category-chip-pick" onClick={onPick} title={t.detailSwitchCategory}>
-        {category.name}
+        {displayName}
       </button>
       {onRemove && (
         <button
           className="category-chip-remove"
           onClick={(e) => {
             e.stopPropagation();
-            if (confirm(t.detailDeleteCategoryConfirm.replace('{name}', category.name))) {
+            if (confirm(t.detailDeleteCategoryConfirm.replace('{name}', displayName))) {
               onRemove();
             }
           }}

@@ -5,7 +5,8 @@ import {
   type Category,
   type CategoryStore,
   getAllCategories,
-  getArchiveCategoryId
+  getArchiveCategoryId,
+  getCategoryDisplayName
 } from '../utils/categories';
 import type { Messages } from '../utils/i18n';
 
@@ -162,7 +163,7 @@ export function ArchivesScreen({
                 {groups.map((g) => (
                   <section key={g.category.id} className="overview-group archives-group">
                     <header className="overview-group-head">
-                      <span className="group-name">{g.category.name}</span>
+                      <span className="group-name">{getCategoryDisplayName(g.category, t)}</span>
                       <span className="group-count">
                         {g.records.length} {t.overviewProjectCount}
                       </span>

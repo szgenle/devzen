@@ -6,6 +6,7 @@ import {
   type Category,
   type CategoryStore,
   getAllCategories,
+  getCategoryDisplayName,
   getProjectCategoryId
 } from '../utils/categories';
 import { getDefaultEditor } from '../utils/launchApps';
@@ -137,7 +138,7 @@ export function OverviewList({
       {groups.map((g) => (
         <section key={g.category.id} className="overview-group">
           <header className="overview-group-head">
-            <span className="group-name">{g.category.name}</span>
+            <span className="group-name">{getCategoryDisplayName(g.category, t)}</span>
             <span className="group-count">{g.projects.length} {t.overviewProjectCount}</span>
           </header>
           {viewMode === 'card' ? (
