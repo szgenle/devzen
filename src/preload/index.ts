@@ -13,6 +13,8 @@ import type {
 } from '@shared/types';
 
 const api: DevZenAPI = {
+  platform: process.platform as DevZenAPI['platform'],
+
   getDefaultRootDir: () =>
     ipcRenderer.invoke(IpcChannels.GetDefaultRootDir) as Promise<string>,
 

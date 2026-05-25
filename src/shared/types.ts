@@ -175,6 +175,8 @@ export interface ProjectDirtyInfo {
 
 /** preload 暴露给渲染层的 API */
 export interface DevZenAPI {
+  /** 当前运行平台（与 Node.js process.platform 一致），用于渲染层做差异化 UI */
+  platform: 'darwin' | 'win32' | 'linux' | 'aix' | 'freebsd' | 'openbsd' | 'sunos' | 'cygwin' | 'netbsd' | 'haiku';
   /** 默认建议的扫描根目录（一般为用户主目录） */
   getDefaultRootDir(): Promise<string>;
   /** 选择扫描根目录（打开系统目录选择对话框） */

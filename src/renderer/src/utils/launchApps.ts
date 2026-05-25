@@ -7,7 +7,7 @@
  *  2. 每个项目独立记忆"上次用的编辑器/终端"，存 localStorage。
  *  3. 首次未记忆时，按扫描阶段写入的 project.suggestedEditor 兜底（基于
  *     项目根目录的特征文件，如 .qoder / .trae / .cursor / .vscode 等）。
- *  4. 提供一份常见应用清单，渲染层用作下拉菜单。用户也可在菜单中"自定义…"。
+ *  4. 提供一份按平台过滤的常见应用清单，渲染层用作下拉菜单。用户也可在菜单中"自定义…"。
  */
 
 import type { ProjectInfo } from '../../../shared/types';
@@ -22,8 +22,11 @@ interface Entry {
 
 type Store = Record<string, Entry>;
 
-/** 常见编辑器列表（macOS .app 名）。优先列国内 AI 编程工具，便于一键命中。 */
-export const COMMON_EDITORS: readonly string[] = [
+/**
+ * 跨平台都能命中的编辑器（CLI 名一般等同 macOS 的 .app 名小写映射）。
+ * 顺序优先列国内 AI 编程工具，便于一键命中。
+ */
+const EDITORS_COMMON: readonly string[] = [
   'Visual Studio Code',
   'Cursor',
   'Qoder',
@@ -37,12 +40,14 @@ export const COMMON_EDITORS: readonly string[] = [
   'IntelliJ IDEA',
   'PyCharm',
   'GoLand',
-  'Android Studio',
-  'Xcode'
+  'Android Studio'
 ];
 
-/** 常见终端列表（macOS .app 名） */
-export const COMMON_TERMINALS: readonly string[] = [
+/** macOS 专属编辑器 */
+const EDITORS_MAC_ONLY: readonly string[] = ['Xcode'];
+
+/** macOS 专属终端 */
+const TERMINALS_MAC: readonly string[] = [
   'Terminal',
   'iTerm',
   'Warp',
@@ -53,9 +58,55 @@ export const COMMON_TERMINALS: readonly string[] = [
   'Kitty'
 ];
 
+/** Windows 专属终端（"逻辑名"，主进程映射到 wt / cmd / powershell 等 CLI） */
+const TERMINALS_WIN: readonly string[] = [
+  'Windows Terminal',
+  'PowerShell',
+  'Command Prompt',
+  'Git Bash',
+  'Cmder'
+];
+
+/** Linux 常见终端 */
+const TERMINALS_LINUX: readonly string[] = [
+  'gnome-terminal',
+  'konsole',
+  'xterm',
+  'alacritty',
+  'kitty',
+  'wezterm'
+];
+
+function currentPlatform(): string {
+  // preload 把 process.platform 透传到 window.devzen.platform；测试或 SSR 等场景下兜底为 darwin
+  if (typeof window !== 'undefined' && window.devzen && window.devzen.platform) {
+    return window.devzen.platform;
+  }
+  return 'darwin';
+}
+
+/** 当前平台下下拉菜单要展示的编辑器候选 */
+export const COMMON_EDITORS: readonly string[] = (() => {
+  if (currentPlatform() === 'darwin') return [...EDITORS_COMMON, ...EDITORS_MAC_ONLY];
+  return EDITORS_COMMON;
+})();
+
+/** 当前平台下下拉菜单要展示的终端候选 */
+export const COMMON_TERMINALS: readonly string[] = (() => {
+  const p = currentPlatform();
+  if (p === 'win32') return TERMINALS_WIN;
+  if (p === 'linux') return TERMINALS_LINUX;
+  return TERMINALS_MAC;
+})();
+
 /** 默认 fallback：用户从未为该项目选择过时使用 */
 export const DEFAULT_EDITOR = 'Visual Studio Code';
-export const DEFAULT_TERMINAL = 'Terminal';
+export const DEFAULT_TERMINAL: string = (() => {
+  const p = currentPlatform();
+  if (p === 'win32') return 'Windows Terminal';
+  if (p === 'linux') return 'gnome-terminal';
+  return 'Terminal';
+})();
 
 function read(): Store {
   try {
