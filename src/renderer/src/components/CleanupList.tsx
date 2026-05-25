@@ -184,6 +184,16 @@ function CleanupRow({
           <strong>{formatBytes(project.cleanableSize)}</strong>
           <span className="muted">{project.cleanables.length} {t.dirs}</span>
         </div>
+        <button
+          className="link-btn cleanup-reveal-btn"
+          onClick={(e) => {
+            e.stopPropagation();
+            onReveal(project.path);
+          }}
+          title={project.path}
+        >
+          {t.reveal}
+        </button>
       </div>
 
       {expanded && (
