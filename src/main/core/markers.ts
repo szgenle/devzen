@@ -94,6 +94,13 @@ export const ECOSYSTEMS: EcosystemSpec[] = [
       { name: '.gradle', hint: 'Gradle 项目缓存' },
       { name: '.cxx', hint: 'Android NDK 构建产物，可重建' }
     ]
+  },
+  {
+    id: 'godot',
+    markers: ['project.godot'],
+    cleanableDirs: [
+      { name: '.godot', hint: 'Godot 编辑器缓存（导入资源/着色器缓存），重新打开项目时自动重建' }
+    ]
   }
 ];
 

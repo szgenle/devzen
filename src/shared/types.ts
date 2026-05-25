@@ -13,6 +13,7 @@ export type EcosystemId =
   | 'apple-xcode'
   | 'apple-spm'
   | 'android'
+  | 'godot'
   | 'unknown';
 
 /** 一个可清理的目录 */
