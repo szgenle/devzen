@@ -35,7 +35,9 @@
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json",
     "typecheck": "npm run typecheck:node && npm run typecheck:web",
     "package:mac": "electron-vite build && electron-builder --mac --dir",
-    "dist:mac": "electron-vite build && electron-builder --mac"
+    "package:win": "electron-vite build && electron-builder --win --dir",
+    "dist:mac": "electron-vite build && electron-builder --mac",
+    "dist:win": "electron-vite build && electron-builder --win"
   },
   "dependencies": {
     "electron-store": "^10.0.0"
