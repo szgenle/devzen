@@ -322,36 +322,40 @@ function OverviewCard({ project, t, onReveal, onSelect, onCompareDuplicates, onO
     <div className="overview-card" onClick={onSelect} title={t.overviewViewDetail}>
       <div className="overview-card-header">
         <OpenInEditorButton project={project} t={t} onOpenWithEditor={onOpenWithEditor} />
-        <span className="project-name">{project.name}</span>
-        {dupGroup && (
-          <span
-            className="tag tag-duplicate"
-            title={t.duplicateBadgeTitle.replace('{count}', String(dupGroup.members.length))}
-            onClick={(e) => {
-              e.stopPropagation();
-              onCompareDuplicates(dupGroup.groupId);
-            }}
-          >
-            {t.duplicateBadge.replace('{count}', String(dupGroup.members.length))}
-          </span>
-        )}
-        {sourceTags.map((meta) => (
-          <span key={meta.label} className={`tag ${meta.cls}`} title={meta.title}>
-            {meta.label}
-          </span>
-        ))}
+        <span className="project-name" title={project.name}>{project.name}</span>
       </div>
       <div className="overview-card-tags">
-        {project.ecosystems.map((e) => (
-          <span key={e} className={`tag tag-${e}`}>
-            {ECO_LABELS[e] ?? (e === 'unknown' ? t.ecoUnknown : e)}
-          </span>
-        ))}
-        {project.gitDirty && (
-          <span className="tag tag-dirty" title={t.overviewDirtyTitle}>
-            {t.overviewDirty}
-          </span>
-        )}
+        <div className="overview-card-tags-left">
+          {dupGroup && (
+            <span
+              className="tag tag-duplicate"
+              title={t.duplicateBadgeTitle.replace('{count}', String(dupGroup.members.length))}
+              onClick={(e) => {
+                e.stopPropagation();
+                onCompareDuplicates(dupGroup.groupId);
+              }}
+            >
+              {t.duplicateBadge.replace('{count}', String(dupGroup.members.length))}
+            </span>
+          )}
+          {sourceTags.map((meta) => (
+            <span key={meta.label} className={`tag ${meta.cls}`} title={meta.title}>
+              {meta.label}
+            </span>
+          ))}
+        </div>
+        <div className="overview-card-tags-right">
+          {project.ecosystems.map((e) => (
+            <span key={e} className={`tag tag-${e}`}>
+              {ECO_LABELS[e] ?? (e === 'unknown' ? t.ecoUnknown : e)}
+            </span>
+          ))}
+          {project.gitDirty && (
+            <span className="tag tag-dirty" title={t.overviewDirtyTitle}>
+              {t.overviewDirty}
+            </span>
+          )}
+        </div>
       </div>
       {project.description && (
         <div className="overview-card-desc muted">{project.description}</div>

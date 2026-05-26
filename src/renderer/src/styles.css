@@ -848,7 +848,25 @@ button.ghost-btn:hover:not(:disabled) {
 .overview-card-tags {
   display: flex;
   flex-wrap: wrap;
+  gap: 4px 8px;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.overview-card-tags-left,
+.overview-card-tags-right {
+  display: flex;
+  flex-wrap: wrap;
   gap: 4px;
+}
+.overview-card-tags-left {
+  justify-content: flex-start;
+}
+.overview-card-tags-right {
+  justify-content: flex-end;
+}
+.overview-card-tags-left:empty,
+.overview-card-tags-right:empty {
+  display: none;
 }
 .overview-card-desc {
   font-size: 11px;
