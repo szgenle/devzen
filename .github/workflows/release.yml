@@ -14,6 +14,15 @@ on:
         required: false
         default: ''
 
+# 必须显式声明 contents: write，否则 action-gh-release 调用 update-release
+# API 会因默认只读 token 报 "Resource not accessible by integration".
+permissions:
+  contents: write
+
+# 提前 opt-in Node.js 24，规避 actions/* 的 Node 20 弃用警告。
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   build:
     name: Build ${{ matrix.os }}
