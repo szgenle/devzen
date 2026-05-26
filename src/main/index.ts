@@ -2,15 +2,21 @@ import { app, BrowserWindow, shell } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { registerIpcHandlers } from './ipc/index.js';
+import { loadWindowState, saveWindowState } from './core/window-state.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 let mainWindow: BrowserWindow | null = null;
 
-function createWindow(): void {
+async function createWindow(): Promise<void> {
+  const windowState = await loadWindowState();
+
   mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 820,
+    ...(windowState.x !== undefined && windowState.y !== undefined
+      ? { x: windowState.x, y: windowState.y }
+      : {}),
+    width: windowState.width,
+    height: windowState.height,
     minWidth: 960,
     minHeight: 600,
     title: 'DevZen',
@@ -25,7 +31,26 @@ function createWindow(): void {
     }
   });
 
+  // 如果之前是最大化状态，恢复最大化
+  if (windowState.isMaximized) {
+    mainWindow.maximize();
+  }
+
   mainWindow.on('ready-to-show', () => mainWindow?.show());
+
+  // 窗口关闭前保存位置和大小
+  mainWindow.on('close', () => {
+    if (!mainWindow) return;
+    const isMaximized = mainWindow.isMaximized();
+    const bounds = mainWindow.getNormalBounds();
+    saveWindowState({
+      x: bounds.x,
+      y: bounds.y,
+      width: bounds.width,
+      height: bounds.height,
+      isMaximized
+    });
+  });
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
