@@ -155,6 +155,7 @@ const zh: Record<string, string> = {
   tagCreate: '新建标签',
   tagPlaceholder: '输入标签名…',
   tagDeleteConfirm: '删除标签「{name}」？所有项目的该标签会被同时移除。',
+  tagUntagged: '未标记',
 
   // --- 概览 ---
   overviewEmpty: '当前目录下没有识别到项目。可以试试在首页换个目录或重新扫描。',
@@ -390,6 +391,7 @@ const en: Record<string, string> = {
   tagCreate: 'New tag',
   tagPlaceholder: 'Tag name…',
   tagDeleteConfirm: 'Delete tag "{name}"? It will be removed from all projects.',
+  tagUntagged: 'Untagged',
 
   overviewEmpty: 'No projects found in this directory. Try changing directory or rescanning from the home screen.',
   overviewProjectCount: 'projects',

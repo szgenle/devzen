@@ -561,6 +561,7 @@ export function App() {
                   <OverviewList
                     projects={filteredProjects}
                     categoryStore={categoryStore}
+                    tagStore={tagStore}
                     viewMode={viewMode}
                     t={t}
                     onReveal={(p: string) => window.devzen.revealInFinder(p)}

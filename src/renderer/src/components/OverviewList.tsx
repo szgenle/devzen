@@ -9,6 +9,7 @@ import {
   getCategoryDisplayName,
   getProjectCategoryId
 } from '../utils/categories';
+import { type TagStore, getProjectTags } from '../utils/tags';
 import { getDefaultEditor } from '../utils/launchApps';
 import type { Messages } from '../utils/i18n';
 
@@ -54,6 +55,7 @@ function OpenInEditorButton({
 interface Props {
   projects: ProjectInfo[];
   categoryStore: CategoryStore;
+  tagStore: TagStore;
   viewMode: ViewMode;
   t: Messages;
   onReveal: (path: string) => void;
@@ -86,9 +88,17 @@ const ECO_LABELS: Record<string, string> = {
   android: 'Android'
 };
 
+interface TagSubGroup {
+  /** 标签名；null 表示"未标记"分组 */
+  tagName: string | null;
+  projects: ProjectInfo[];
+}
+
 interface Group {
   category: Category;
   projects: ProjectInfo[];
+  /** 若该分类下有项目设置了标签，则按标签拆分出子分组 */
+  tagSubGroups: TagSubGroup[] | null;
 }
 
 /**
@@ -99,6 +109,7 @@ interface Group {
 export function OverviewList({
   projects,
   categoryStore,
+  tagStore,
   viewMode,
   t,
   onReveal,
@@ -120,10 +131,38 @@ export function OverviewList({
       if (!list || list.length === 0) continue;
       // 按最近修改时间倒序
       list.sort((a, b) => (b.lastModified ?? 0) - (a.lastModified ?? 0));
-      result.push({ category: cat, projects: list });
+
+      // 检查该分类下是否有项目设置了标签
+      const hasAnyTag = list.some((p) => getProjectTags(p.path, tagStore).length > 0);
+      let tagSubGroups: TagSubGroup[] | null = null;
+      if (hasAnyTag) {
+        // 按标签分组：每个标签一个子组，无标签的归入"未标记"
+        const tagMap = new Map<string, { tagName: string; projects: ProjectInfo[] }>();
+        const untagged: ProjectInfo[] = [];
+        for (const p of list) {
+          const tags = getProjectTags(p.path, tagStore);
+          if (tags.length === 0) {
+            untagged.push(p);
+          } else {
+            for (const tag of tags) {
+              if (!tagMap.has(tag.id)) tagMap.set(tag.id, { tagName: tag.name, projects: [] });
+              tagMap.get(tag.id)!.projects.push(p);
+            }
+          }
+        }
+        tagSubGroups = [];
+        for (const [, group] of tagMap) {
+          tagSubGroups.push({ tagName: group.tagName, projects: group.projects });
+        }
+        if (untagged.length > 0) {
+          tagSubGroups.push({ tagName: null, projects: untagged });
+        }
+      }
+
+      result.push({ category: cat, projects: list, tagSubGroups });
     }
     return result;
-  }, [projects, categoryStore]);
+  }, [projects, categoryStore, tagStore]);
 
   if (projects.length === 0) {
     return (
@@ -133,6 +172,37 @@ export function OverviewList({
     );
   }
 
+  const renderProjects = (list: ProjectInfo[]) =>
+    viewMode === 'card' ? (
+      <div className="overview-card-grid">
+        {list.map((p) => (
+          <OverviewCard
+            key={p.path}
+            project={p}
+            t={t}
+            onReveal={onReveal}
+            onSelect={() => onSelectProject(p)}
+            onCompareDuplicates={onCompareDuplicates}
+            onOpenWithEditor={onOpenWithEditor}
+          />
+        ))}
+      </div>
+    ) : (
+      <>
+        {list.map((p) => (
+          <OverviewRow
+            key={p.path}
+            project={p}
+            t={t}
+            onReveal={onReveal}
+            onSelect={() => onSelectProject(p)}
+            onCompareDuplicates={onCompareDuplicates}
+            onOpenWithEditor={onOpenWithEditor}
+          />
+        ))}
+      </>
+    );
+
   return (
     <div className={`overview-list ${viewMode === 'card' ? 'overview-card-mode' : ''}`}>
       {groups.map((g) => (
@@ -141,32 +211,18 @@ export function OverviewList({
             <span className="group-name">{getCategoryDisplayName(g.category, t)}</span>
             <span className="group-count">{g.projects.length} {t.overviewProjectCount}</span>
           </header>
-          {viewMode === 'card' ? (
-            <div className="overview-card-grid">
-              {g.projects.map((p) => (
-                <OverviewCard
-                  key={p.path}
-                  project={p}
-                  t={t}
-                  onReveal={onReveal}
-                  onSelect={() => onSelectProject(p)}
-                  onCompareDuplicates={onCompareDuplicates}
-                  onOpenWithEditor={onOpenWithEditor}
-                />
-              ))}
-            </div>
-          ) : (
-            g.projects.map((p) => (
-              <OverviewRow
-                key={p.path}
-                project={p}
-                t={t}
-                onReveal={onReveal}
-                onSelect={() => onSelectProject(p)}
-                onCompareDuplicates={onCompareDuplicates}
-                onOpenWithEditor={onOpenWithEditor}
-              />
+          {g.tagSubGroups ? (
+            g.tagSubGroups.map((sub) => (
+              <div key={sub.tagName ?? '__untagged__'} className="overview-tag-subgroup">
+                <div className="overview-tag-subgroup-head">
+                  <span className="tag-subgroup-name">{sub.tagName ?? t.tagUntagged}</span>
+                  <span className="tag-subgroup-count">{sub.projects.length}</span>
+                </div>
+                {renderProjects(sub.projects)}
+              </div>
             ))
+          ) : (
+            renderProjects(g.projects)
           )}
         </section>
       ))}
