@@ -1,6 +1,6 @@
 {
   "name": "devzen",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "An inventory tool for every dev project on your machine — scan, dedupe, clean, archive (macOS).",
   "author": "szgenle",
