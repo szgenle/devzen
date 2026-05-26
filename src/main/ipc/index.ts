@@ -13,7 +13,13 @@ import {
   listArchives,
   restore as restoreProject
 } from '../core/archiver.js';
-import type { ScanProgress } from '@shared/types';
+import {
+  bulkMerge as bulkMergeHistory,
+  listAll as listHistory,
+  remove as removeHistory,
+  upsert as upsertHistory
+} from '../core/history-store.js';
+import type { HistoryEntry, ScanProgress } from '@shared/types';
 
 const execFileAsync = promisify(execFile);
 
@@ -112,6 +118,22 @@ export function registerIpcHandlers(): void {
       await launchApp('terminal', appName, target);
     }
   );
+
+  ipcMain.handle(IpcChannels.ListHistory, () => {
+    return listHistory();
+  });
+
+  ipcMain.handle(IpcChannels.UpsertHistory, (_event, entry: HistoryEntry) => {
+    return upsertHistory(entry);
+  });
+
+  ipcMain.handle(IpcChannels.RemoveHistory, (_event, rootDir: string) => {
+    return removeHistory(rootDir);
+  });
+
+  ipcMain.handle(IpcChannels.BulkMergeHistory, (_event, entries: HistoryEntry[]) => {
+    return bulkMergeHistory(entries);
+  });
 }
 
 /** 识别 macOS `open -a` 在找不到目标应用时返回的错误信息。 */

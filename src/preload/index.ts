@@ -5,6 +5,7 @@ import type {
   ArchiveResult,
   CleanResult,
   DevZenAPI,
+  HistoryEntry,
   ProjectDetail,
   ProjectDirtyInfo,
   ProjectInfo,
@@ -59,7 +60,19 @@ const api: DevZenAPI = {
     ipcRenderer.invoke(IpcChannels.OpenWithEditor, target, editor) as Promise<void>,
 
   openWithTerminal: (target: string, terminal: string) =>
-    ipcRenderer.invoke(IpcChannels.OpenWithTerminal, target, terminal) as Promise<void>
+    ipcRenderer.invoke(IpcChannels.OpenWithTerminal, target, terminal) as Promise<void>,
+
+  listHistory: () =>
+    ipcRenderer.invoke(IpcChannels.ListHistory) as Promise<HistoryEntry[]>,
+
+  upsertHistory: (entry: HistoryEntry) =>
+    ipcRenderer.invoke(IpcChannels.UpsertHistory, entry) as Promise<HistoryEntry[]>,
+
+  removeHistory: (rootDir: string) =>
+    ipcRenderer.invoke(IpcChannels.RemoveHistory, rootDir) as Promise<HistoryEntry[]>,
+
+  bulkMergeHistory: (entries: HistoryEntry[]) =>
+    ipcRenderer.invoke(IpcChannels.BulkMergeHistory, entries) as Promise<HistoryEntry[]>
 };
 
 contextBridge.exposeInMainWorld('devzen', api);

@@ -595,6 +595,19 @@ button.ghost-btn:hover:not(:disabled) {
   white-space: nowrap;
 }
 
+/* 顶部「清理」主操作按钮 */
+.clean-btn-primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+  font-weight: 500;
+}
+.clean-btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  color: #fff;
+}
+
 /* ---------------- Main ---------------- */
 .main {
   overflow: auto;
@@ -922,9 +935,28 @@ button.ghost-btn:hover:not(:disabled) {
   font-size: 12px;
   border-bottom: 1px solid var(--border);
   background: var(--bg-elev);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: space-between;
 }
 .cleanup-summary strong {
   color: var(--warning);
+}
+.cleanup-select-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+  font-weight: 500;
+  color: var(--text);
+}
+.cleanup-select-all input[type='checkbox'] {
+  cursor: pointer;
+}
+.cleanup-summary-text {
+  font-size: 12px;
 }
 .cleanup-row {
   border-bottom: 1px solid var(--border);

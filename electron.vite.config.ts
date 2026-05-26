@@ -22,6 +22,13 @@ export default defineConfig({
   },
   renderer: {
     root: resolve(__dirname, 'src/renderer'),
+    // 锁死 dev server 端口，避免 Vite 在 5173 被占用时静默漂移到 5174/5175。
+    // localStorage 按 origin 隔离，端口一变 origin 就变，上次 dev 写入的扫描历史会
+    // 读不到。strictPort 让冲突时直接报错，提醒开发者手动清理残留进程。
+    server: {
+      port: 5173,
+      strictPort: true
+    },
     resolve: {
       alias: {
         '@shared': resolve(__dirname, 'src/shared'),

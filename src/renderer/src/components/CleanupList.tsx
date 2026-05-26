@@ -9,6 +9,8 @@ interface Props {
   t: Messages;
   onToggleDir: (dirPath: string) => void;
   onToggleProject: (p: ProjectInfo, allOn: boolean) => void;
+  /** 顶部全选复选框回调：一次性对列表中所有项目的可清理目录设为全选/全取消。 */
+  onToggleAll: (allOn: boolean) => void;
   onReveal: (path: string) => void;
 }
 
@@ -34,9 +36,19 @@ function isInteractive(target: EventTarget | null): boolean {
  * - 在展开的子目录条目上拖动 → 批量切换目录级勾选
  * - 起点是 input/button/链接时不进入拖动，保留原始点击语义
  */
-export function CleanupList({ projects, selected, t, onToggleDir, onToggleProject, onReveal }: Props) {
+export function CleanupList({ projects, selected, t, onToggleDir, onToggleProject, onToggleAll, onReveal }: Props) {
   // 只展示有可清理内容的项目
   const cleanable = projects.filter((p) => p.cleanables.length > 0);
+
+  // 全选状态派生：用于 checkbox 的 checked / indeterminate 表现
+  const allCleanablePaths = cleanable.flatMap((p) => p.cleanables.map((c) => c.path));
+  const totalCount = allCleanablePaths.length;
+  const selectedCount = allCleanablePaths.reduce(
+    (n, path) => (selected.has(path) ? n + 1 : n),
+    0
+  );
+  const allChecked = totalCount > 0 && selectedCount === totalCount;
+  const someChecked = selectedCount > 0 && selectedCount < totalCount;
 
   // 用 ref 承载拖拽状态，避免每次拖过一行就重渲染整个列表
   const dragRef = useRef<DragState>(null);
@@ -99,9 +111,22 @@ export function CleanupList({ projects, selected, t, onToggleDir, onToggleProjec
 
   return (
     <div className="cleanup-list">
-      <div className="cleanup-summary muted">
-        {cleanable.length} {t.cleanSummaryPrefix}{' '}
-        <strong>{formatBytes(cleanable.reduce((s, p) => s + p.cleanableSize, 0))}</strong>
+      <div className="cleanup-summary">
+        <label className="cleanup-select-all" title={t.cleanSelectAllTitle}>
+          <input
+            type="checkbox"
+            checked={allChecked}
+            ref={(el) => {
+              if (el) el.indeterminate = someChecked;
+            }}
+            onChange={(e) => onToggleAll(e.target.checked)}
+          />
+          <span>{t.cleanSelectAll}</span>
+        </label>
+        <span className="cleanup-summary-text muted">
+          {cleanable.length} {t.cleanSummaryPrefix}{' '}
+          <strong>{formatBytes(cleanable.reduce((s, p) => s + p.cleanableSize, 0))}</strong>
+        </span>
       </div>
       {cleanable.map((p) => (
         <CleanupRow

@@ -50,7 +50,6 @@ import { setRecentEditor, setRecentTerminal } from './utils/launchApps';
 import { getMessages } from './utils/i18n';
 
 type View = 'home' | 'scanning' | 'results' | 'settings' | 'archives';
-type ResultsTab = 'overview' | 'cleanup';
 export type ViewMode = 'list' | 'card';
 
 const VIEW_MODE_KEY = 'devzen.viewMode.v1';
@@ -64,7 +63,6 @@ function saveViewMode(mode: ViewMode): void {
 
 export function App() {
   const [view, setView] = useState<View>('home');
-  const [resultsTab, setResultsTab] = useState<ResultsTab>('overview');
   const [rootDir, setRootDir] = useState<string | null>(null);
   const [projects, setProjects] = useState<ProjectInfo[]>([]);
   const [progress, setProgress] = useState<ScanProgress | null>(null);
@@ -72,6 +70,10 @@ export function App() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [cleaning, setCleaning] = useState(false);
   const [lastResults, setLastResults] = useState<CleanResult[] | null>(null);
+  // 当前结果页是否处于「清理详情」子视图：从确认框点击「查看列表」进入。
+  // 该视图下主区渲染 CleanupList，底部带 ActionBar，项目集合固定为进入时的筛选范围。
+  const [cleanupView, setCleanupView] = useState(false);
+  const [cleanupSnapshot, setCleanupSnapshot] = useState<ProjectInfo[] | null>(null);
   // 上次扫描时间戳；用于在结果页头部展示"上次扫描于 X"，提示数据新鲜度
   const [scannedAt, setScannedAt] = useState<number | null>(null);
   // 扫描历史列表：首页以列表形式呈现，用户自己决定查看或重扫
@@ -118,7 +120,7 @@ export function App() {
   // 启动时加载历史与默认主目录，但保持在首页：
   // 清理是低频操作，没必要每次进入都自动扫描。
   useEffect(() => {
-    setHistory(loadHistory());
+    loadHistory().then(setHistory).catch(() => setHistory([]));
     window.devzen.getDefaultRootDir().then((dir) => {
       setRootDir((curr) => curr ?? dir);
     });
@@ -146,7 +148,8 @@ export function App() {
       setProjects(list);
       setScannedAt(ts);
       // 扫描成功后写回历史，让下次进入首页能看到这条记录
-      setHistory(upsertHistoryEntry({ rootDir, projects: list, scannedAt: ts }));
+      const next = await upsertHistoryEntry({ rootDir, projects: list, scannedAt: ts });
+      setHistory(next);
       setView('results');
     } catch {
       setView('home');
@@ -178,13 +181,16 @@ export function App() {
           setProgress({ scannedDirs: 0, foundProjects: 0, currentPath: entry.rootDir });
           window.devzen
             .scanProjects(entry.rootDir)
-            .then((list) => {
+            .then(async (list) => {
               const ts = Date.now();
               setProjects(list);
               setScannedAt(ts);
-              setHistory(
-                upsertHistoryEntry({ rootDir: entry.rootDir, projects: list, scannedAt: ts })
-              );
+              const next = await upsertHistoryEntry({
+                rootDir: entry.rootDir,
+                projects: list,
+                scannedAt: ts
+              });
+              setHistory(next);
               setView('results');
             })
             .catch(() => setView('home'));
@@ -196,7 +202,7 @@ export function App() {
 
   // 删除某条历史，仅动本地存档，不会变动实际文件系统
   const handleRemoveEntry = useCallback((rootDir: string) => {
-    setHistory(removeHistoryEntry(rootDir));
+    removeHistoryEntry(rootDir).then(setHistory).catch(() => undefined);
   }, []);
 
   // 返回首页：仅切换视图，历史与当前结果均保留，用户可从历史重新点进查看
@@ -339,10 +345,20 @@ export function App() {
   );
   const filterActive = isFilterActive(filter);
 
-  const totalCleanable = useMemo(
-    () => projects.reduce((s, p) => s + p.cleanableSize, 0),
-    [projects]
-  );
+  // 「清理」按钮的作用范围：筛选有效时仅限定于筛选后的项目，
+  // 否则针对全部项目。在该范围内收集所有 cleanables 路径与总大小。
+  const cleanScope = useMemo(() => {
+    const targetProjects = filterActive ? filteredProjects : projects;
+    const paths: string[] = [];
+    let size = 0;
+    for (const p of targetProjects) {
+      for (const c of p.cleanables) {
+        paths.push(c.path);
+        size += c.size;
+      }
+    }
+    return { paths, size, projectCount: targetProjects.length };
+  }, [filterActive, filteredProjects, projects]);
 
   const selectedSize = useMemo(() => {
     let total = 0;
@@ -389,6 +405,49 @@ export function App() {
     });
   }, []);
 
+  /** 清理详情页顶部「全选」复选框：一次性对快照内所有 cleanables 设为全选/全取消。 */
+  const toggleAllInCleanup = useCallback(
+    (allOn: boolean) => {
+      const snapshot = cleanupSnapshot;
+      if (!snapshot) return;
+      setSelected(() => {
+        if (!allOn) return new Set();
+        const next = new Set<string>();
+        for (const p of snapshot) {
+          for (const c of p.cleanables) next.add(c.path);
+        }
+        return next;
+      });
+    },
+    [cleanupSnapshot]
+  );
+
+  /** 点击顶部「清理」按钮：将 cleanScope 范围内的 cleanables 全部选中后弹出确认框。
+   *  范围由是否处于筛选状态决定：有筛选时仅限定于筛选结果，无筛选时针对全部项目。 */
+  const handleCleanFromHeader = useCallback(() => {
+    if (cleanScope.paths.length === 0) return;
+    setSelected(new Set(cleanScope.paths));
+    setConfirmOpen(true);
+  }, [cleanScope.paths]);
+
+  /** 确认框「查看列表」：切到清理详情视图，项目集合冻结为当前 cleanScope 对应的项目，
+   *  默认全选，用户可在详情页逐个取消不需要的目录。 */
+  const handleViewCleanupList = useCallback(() => {
+    if (cleanScope.paths.length === 0) return;
+    const snapshot = filterActive ? filteredProjects : projects;
+    setCleanupSnapshot(snapshot.filter((p) => p.cleanables.length > 0));
+    setSelected(new Set(cleanScope.paths));
+    setConfirmOpen(false);
+    setCleanupView(true);
+  }, [cleanScope.paths, filterActive, filteredProjects, projects]);
+
+  /** 从清理详情视图返回概览：释放快照与选中。 */
+  const handleBackToOverview = useCallback(() => {
+    setCleanupView(false);
+    setCleanupSnapshot(null);
+    setSelected(new Set());
+  }, []);
+
   const handleClean = useCallback(async () => {
     if (selected.size === 0) return;
     setCleaning(true);
@@ -401,9 +460,13 @@ export function App() {
         const ts = Date.now();
         setProjects(list);
         setScannedAt(ts);
-        setHistory(upsertHistoryEntry({ rootDir, projects: list, scannedAt: ts }));
+        const next = await upsertHistoryEntry({ rootDir, projects: list, scannedAt: ts });
+        setHistory(next);
       }
       setSelected(new Set());
+      // 清理完成后退出详情子视图，避免用户停留在项目列表已被调空的页面
+      setCleanupView(false);
+      setCleanupSnapshot(null);
     } finally {
       setCleaning(false);
       setConfirmOpen(false);
@@ -535,17 +598,38 @@ export function App() {
             rootDir={rootDir}
             cleaning={cleaning}
             scannedAt={scannedAt}
-            activeTab={resultsTab}
             viewMode={viewMode}
+            cleanDisabled={cleanupView ? false : cleanScope.paths.length === 0}
+            cleanTitle={
+              cleanupView
+                ? t.backToOverview
+                : cleanScope.paths.length === 0
+                ? t.cleanBtnTitleEmpty
+                : filterActive
+                ? t.cleanBtnTitleFiltered
+                : t.cleanBtnTitleAll
+            }
+            cleanLabel={cleanupView ? t.backToOverview : t.cleanBtn}
+            cleanVariant={cleanupView ? 'default' : 'primary'}
             t={t}
             onViewModeChange={handleViewModeChange}
-            onTabChange={setResultsTab}
             onBackHome={handleBackHome}
             onRescan={handleScan}
+            onClean={cleanupView ? handleBackToOverview : handleCleanFromHeader}
           />
 
           <main className="main">
-            {resultsTab === 'overview' ? (
+            {cleanupView && cleanupSnapshot ? (
+              <CleanupList
+                projects={cleanupSnapshot}
+                selected={selected}
+                t={t}
+                onToggleDir={toggleDir}
+                onToggleProject={toggleProject}
+                onToggleAll={toggleAllInCleanup}
+                onReveal={(p) => window.devzen.revealInFinder(p)}
+              />
+            ) : (
               <>
                 <FilterBar
                   projects={projects}
@@ -571,22 +655,13 @@ export function App() {
                   />
                 )}
               </>
-            ) : (
-              <CleanupList
-                projects={projects}
-                selected={selected}
-                t={t}
-                onToggleDir={toggleDir}
-                onToggleProject={toggleProject}
-                onReveal={(p) => window.devzen.revealInFinder(p)}
-              />
             )}
           </main>
 
-          {resultsTab === 'cleanup' && (
+          {cleanupView && cleanupSnapshot && (
             <ActionBar
-              projectCount={projects.length}
-              totalCleanable={totalCleanable}
+              projectCount={cleanupSnapshot.length}
+              totalCleanable={cleanupSnapshot.reduce((s, p) => s + p.cleanableSize, 0)}
               selectedCount={selected.size}
               selectedSize={selectedSize}
               cleaning={cleaning}
@@ -649,6 +724,8 @@ export function App() {
           }
           confirmText={cleaning ? t.cleaning : t.confirmBtn}
           cancelText={t.cancel}
+          secondaryText={cleanupView ? undefined : t.confirmViewList}
+          onSecondary={cleanupView ? undefined : handleViewCleanupList}
           confirmDisabled={cleaning}
           onConfirm={handleClean}
           onCancel={() => setConfirmOpen(false)}

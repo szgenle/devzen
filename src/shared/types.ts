@@ -173,6 +173,16 @@ export interface ProjectDirtyInfo {
   detail: string;
 }
 
+/** 扫描历史条目（主进程 history.json 的单元，也是 IPC 传输形态） */
+export interface HistoryEntry {
+  /** 扫描根目录绝对路径，作为索引主键 */
+  rootDir: string;
+  /** 该次扫描得到的项目快照 */
+  projects: ProjectInfo[];
+  /** 扫描时间戳（毫秒） */
+  scannedAt: number;
+}
+
 /** preload 暴露给渲染层的 API */
 export interface DevZenAPI {
   /** 当前运行平台（与 Node.js process.platform 一致），用于渲染层做差异化 UI */
@@ -205,6 +215,14 @@ export interface DevZenAPI {
   openWithEditor(path: string, editor: string): Promise<void>;
   /** 在指定终端应用中打开项目目录（例如 "Terminal" / "iTerm" / "Warp"） */
   openWithTerminal(path: string, terminal: string): Promise<void>;
+  /** 读取扫描历史（按 scannedAt 倒序） */
+  listHistory(): Promise<HistoryEntry[]>;
+  /** 按 rootDir 主键插入或替换一条扫描历史，返回排序后的新列表 */
+  upsertHistory(entry: HistoryEntry): Promise<HistoryEntry[]>;
+  /** 按 rootDir 主键删除一条扫描历史，返回剩余列表 */
+  removeHistory(rootDir: string): Promise<HistoryEntry[]>;
+  /** 一次性把若干历史条目合并入主进程存档，用于从旧 localStorage 迁移 */
+  bulkMergeHistory(entries: HistoryEntry[]): Promise<HistoryEntry[]>;
 }
 
 declare global {

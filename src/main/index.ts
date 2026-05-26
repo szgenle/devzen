@@ -50,6 +50,13 @@ async function createWindow(): Promise<void> {
       height: bounds.height,
       isMaximized
     });
+    // 强制把 renderer 在内存中的 localStorage / IndexedDB 等 storage 数据刷盘，
+    // 避免 Chromium 延迟刷盘遇上 Ctrl+C/SIGINT 强杀导致刚 setItem 的内容丢。
+    try {
+      mainWindow.webContents.session.flushStorageData();
+    } catch {
+      // session 已释放时忽略
+    }
   });
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -75,5 +82,9 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
+  // 原本依照 macOS 惯例关窗不退 app，但这让 dev 体验很坑：
+  //   - 点窗口关闭后终端里 electron 进程还在跑，只能 Ctrl+C 强杀；
+  //   - SIGINT 强杀会导致 Chromium 未 flush localStorage，扫描历史丢失。
+  // 索性统一变为“关窗不 quit” → “关窗即 quit”，让 dev 进程随窗口干净退出。
+  app.quit();
 });

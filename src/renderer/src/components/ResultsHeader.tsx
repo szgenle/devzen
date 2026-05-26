@@ -2,37 +2,46 @@ import { shortenPath, formatRelative } from '../utils/format';
 import type { ViewMode } from '../App';
 import type { Messages } from '../utils/i18n';
 
-type ResultsTab = 'overview' | 'cleanup';
-
 interface Props {
   rootDir: string | null;
   cleaning: boolean;
   /** 上次扫描完成的时间戳，用于展示数据新鲜度 */
   scannedAt: number | null;
-  activeTab: ResultsTab;
   viewMode: ViewMode;
+  /** 是否禁用「清理」按钮（当前筛选结果中没有可清理目录时禁用） */
+  cleanDisabled: boolean;
+  /** 「清理」按钮 hover 提示，由父组件根据筛选状态生成 */
+  cleanTitle: string;
+  /** 主操作按钮文案（默认 t.cleanBtn；清理详情视图下可被覆盖为「返回概览」） */
+  cleanLabel?: string;
+  /** 主操作按钮样式变体：primary为 accent 主色，default 为普通按钮 */
+  cleanVariant?: 'primary' | 'default';
   t: Messages;
   onViewModeChange: (mode: ViewMode) => void;
-  onTabChange: (tab: ResultsTab) => void;
   onBackHome: () => void;
   onRescan: () => void;
+  onClean: () => void;
 }
 
 /**
  * 结果页顶部 header：
- * 左侧"← 首页"返回入口 + 品牌；中间 Tab 切换（概览/清理）；右侧扫描路径 + 重新扫描。
+ * 左侧"← 首页"返回入口 + 品牌；右侧视图切换 + 扫描路径 + 重新扫描 + 清理。
+ * 「清理」按钮的作用范围由当前筛选结果决定（搜索 / 分类 / 标签等）。
  */
 export function ResultsHeader({
   rootDir,
   cleaning,
   scannedAt,
-  activeTab,
   viewMode,
+  cleanDisabled,
+  cleanTitle,
+  cleanLabel,
+  cleanVariant = 'primary',
   t,
   onViewModeChange,
-  onTabChange,
   onBackHome,
-  onRescan
+  onRescan,
+  onClean
 }: Props) {
   return (
     <header className="results-header">
@@ -47,41 +56,24 @@ export function ResultsHeader({
         </button>
         <span className="brand">⌬ DevZen</span>
       </div>
-      <div className="results-header-center">
-        <nav className="results-tabs">
-          <button
-            className={`tab-btn ${activeTab === 'overview' ? 'active' : ''}`}
-            onClick={() => onTabChange('overview')}
-          >
-            {t.tabOverview}
-          </button>
-          <button
-            className={`tab-btn ${activeTab === 'cleanup' ? 'active' : ''}`}
-            onClick={() => onTabChange('cleanup')}
-          >
-            {t.tabCleanup}
-          </button>
-        </nav>
-      </div>
+      <div className="results-header-center" />
       <div className="results-header-right">
-        {activeTab === 'overview' && (
-          <div className="view-toggle" title={t.viewToggle}>
-            <button
-              className={`view-toggle-btn ${viewMode === 'list' ? 'active' : ''}`}
-              onClick={() => onViewModeChange('list')}
-              title={t.viewList}
-            >
-              ☰
-            </button>
-            <button
-              className={`view-toggle-btn ${viewMode === 'card' ? 'active' : ''}`}
-              onClick={() => onViewModeChange('card')}
-              title={t.viewCard}
-            >
-              ▦
-            </button>
-          </div>
-        )}
+        <div className="view-toggle" title={t.viewToggle}>
+          <button
+            className={`view-toggle-btn ${viewMode === 'list' ? 'active' : ''}`}
+            onClick={() => onViewModeChange('list')}
+            title={t.viewList}
+          >
+            ☰
+          </button>
+          <button
+            className={`view-toggle-btn ${viewMode === 'card' ? 'active' : ''}`}
+            onClick={() => onViewModeChange('card')}
+            title={t.viewCard}
+          >
+            ▦
+          </button>
+        </div>
         <span className="root-path" title={rootDir ?? ''}>
           {rootDir ? shortenPath(rootDir, 50) : ''}
         </span>
@@ -92,6 +84,14 @@ export function ResultsHeader({
         )}
         <button onClick={onRescan} disabled={cleaning} title={t.rescanTitle}>
           {t.rescanBtn}
+        </button>
+        <button
+          className={cleanVariant === 'primary' ? 'clean-btn-primary' : ''}
+          onClick={onClean}
+          disabled={cleaning || cleanDisabled}
+          title={cleanTitle}
+        >
+          {cleaning ? t.cleaning : cleanLabel ?? t.cleanBtn}
         </button>
       </div>
     </header>
