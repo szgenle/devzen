@@ -23,13 +23,35 @@ import type { HistoryEntry, ScanProgress } from '@shared/types';
 
 const execFileAsync = promisify(execFile);
 
-/** 仅允许在用户家目录内打开，避免渲染层把任意路径丢进来。跨平台：用 path.relative 判断。 */
-function ensureInsideHome(target: string): void {
+/**
+ * 允许打开家目录内或历史扫描根目录内的项目，避免渲染层把任意路径丢进来。
+ * 支持 Windows 多驱动器场景（项目在 C: 以外的其他盘）。
+ */
+function ensureInsideAllowedRoot(target: string): void {
   const home = app.getPath('home');
-  if (!home) throw new Error('无法解析用户家目录');
-  const rel = path.relative(path.normalize(home), path.normalize(target));
-  if (!rel || rel.startsWith('..') || path.isAbsolute(rel)) {
-    throw new Error('仅允许打开用户家目录内的项目');
+  const normalizedTarget = path.normalize(target);
+
+  const allowedBases: string[] = [];
+  if (home) allowedBases.push(path.normalize(home));
+
+  // 读历史扫描根目录，覆盖家目录以外的路径（如 D:\Projects）
+  try {
+    for (const e of listHistory()) {
+      if (e.rootDir) allowedBases.push(path.normalize(e.rootDir));
+    }
+  } catch {
+    // 读历史失败不影响家目录校验
+  }
+
+  if (allowedBases.length === 0) throw new Error('无法确定允许的根目录');
+
+  const isAllowed = allowedBases.some((base) => {
+    const rel = path.relative(base, normalizedTarget);
+    return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
+  });
+
+  if (!isAllowed) {
+    throw new Error('仅允许打开已扫描目录内的项目');
   }
 }
 
@@ -102,7 +124,7 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     IpcChannels.OpenWithEditor,
     async (_event, target: string, editor: string) => {
-      ensureInsideHome(target);
+      ensureInsideAllowedRoot(target);
       await ensureDirectory(target);
       const appName = (editor ?? '').trim();
       await launchApp('editor', appName, target);
@@ -112,7 +134,7 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     IpcChannels.OpenWithTerminal,
     async (_event, target: string, terminal: string) => {
-      ensureInsideHome(target);
+      ensureInsideAllowedRoot(target);
       await ensureDirectory(target);
       const appName = (terminal ?? '').trim();
       await launchApp('terminal', appName, target);
