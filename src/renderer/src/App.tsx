@@ -422,13 +422,15 @@ export function App() {
     [cleanupSnapshot]
   );
 
-  /** 点击顶部「清理」按钮：将 cleanScope 范围内的 cleanables 全部选中后弹出确认框。
-   *  范围由是否处于筛选状态决定：有筛选时仅限定于筛选结果，无筛选时针对全部项目。 */
+  /** 点击顶部「清理」按钮：直接进入清理列表视图，项目集合冻结为当前 cleanScope 对应的项目，
+   *  默认全选，用户可在详情页逐个取消不需要的目录。跳过中间确认弹窗。 */
   const handleCleanFromHeader = useCallback(() => {
     if (cleanScope.paths.length === 0) return;
+    const snapshot = filterActive ? filteredProjects : projects;
+    setCleanupSnapshot(snapshot.filter((p) => p.cleanables.length > 0));
     setSelected(new Set(cleanScope.paths));
-    setConfirmOpen(true);
-  }, [cleanScope.paths]);
+    setCleanupView(true);
+  }, [cleanScope.paths, filterActive, filteredProjects, projects]);
 
   /** 确认框「查看列表」：切到清理详情视图，项目集合冻结为当前 cleanScope 对应的项目，
    *  默认全选，用户可在详情页逐个取消不需要的目录。 */
