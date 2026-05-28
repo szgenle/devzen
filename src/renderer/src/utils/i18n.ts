@@ -149,6 +149,8 @@ const zh: Record<string, string> = {
   filterResultCount: '{count} 个项目匹配',
   filterNoResults: '没有匹配的项目，试试调整筛选条件。',
   filterTag: '标签',
+  filterDirty: '有修改',
+  filterDirtyTitle: '只显示有未提交修改的项目',
 
   // --- 内置分类名（自定义分类用用户输入原文，不走 i18n） ---
   categoryWork: '工作',
@@ -394,6 +396,8 @@ const en: Record<string, string> = {
   filterResultCount: '{count} projects matched',
   filterNoResults: 'No projects match current filters. Try adjusting.',
   filterTag: 'Tag',
+  filterDirty: 'Dirty',
+  filterDirtyTitle: 'Show only projects with uncommitted changes',
 
   // --- Builtin category names ---
   categoryWork: 'Work',

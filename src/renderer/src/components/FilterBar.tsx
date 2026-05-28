@@ -16,6 +16,8 @@ export interface FilterState {
   sources: Set<ProjectSource>;
   /** 按标签 ID 筛选；空集 = 全部 */
   tagIds: Set<string>;
+  /** 只显示有未提交修改的项目 */
+  gitDirty: boolean;
 }
 
 export const EMPTY_FILTER: FilterState = {
@@ -23,11 +25,12 @@ export const EMPTY_FILTER: FilterState = {
   categoryId: null,
   ecosystems: new Set(),
   sources: new Set(),
-  tagIds: new Set()
+  tagIds: new Set(),
+  gitDirty: false
 };
 
 export function isFilterActive(f: FilterState): boolean {
-  return f.query !== '' || f.categoryId !== null || f.ecosystems.size > 0 || f.sources.size > 0 || f.tagIds.size > 0;
+  return f.query !== '' || f.categoryId !== null || f.ecosystems.size > 0 || f.sources.size > 0 || f.tagIds.size > 0 || f.gitDirty;
 }
 
 /** 根据筛选条件过滤项目列表 */
@@ -66,6 +69,10 @@ export function applyFilter(
       const pTags = getProjectTagIds(p.path, tagStore);
       return pTags.some((tid) => filter.tagIds.has(tid));
     });
+  }
+
+  if (filter.gitDirty) {
+    list = list.filter((p) => p.gitDirty === true);
   }
 
   return list;
@@ -147,7 +154,14 @@ export function FilterBar({ projects, filter, categoryStore, tagStore, t, onChan
     onChange({ ...filter, tagIds: next });
   };
 
+  const toggleDirty = () => {
+    onChange({ ...filter, gitDirty: !filter.gitDirty });
+  };
+
   const allTags = useMemo(() => getAllTags(tagStore), [tagStore]);
+
+  // 检查是否有项目处于 dirty 状态
+  const hasDirtyProjects = useMemo(() => projects.some((p) => p.gitDirty === true), [projects]);
 
   const active = isFilterActive(filter);
 
@@ -241,6 +255,20 @@ export function FilterBar({ projects, filter, categoryStore, tagStore, t, onChan
                 {tg.name}
               </button>
             ))}
+          </>
+        )}
+
+        {/* Git 状态 */}
+        {hasDirtyProjects && (
+          <>
+            <span className="filter-divider" />
+            <button
+              className={`filter-chip ${filter.gitDirty ? 'active' : ''}`}
+              onClick={toggleDirty}
+              title={t.filterDirtyTitle}
+            >
+              {t.filterDirty}
+            </button>
           </>
         )}
       </div>
