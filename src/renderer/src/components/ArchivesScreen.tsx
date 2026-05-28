@@ -8,6 +8,7 @@ import {
   getArchiveCategoryId,
   getCategoryDisplayName
 } from '../utils/categories';
+import { type TagStore, getProjectTags } from '../utils/tags';
 import type { Messages } from '../utils/i18n';
 
 type SortKey = 'archivedAt' | 'freedBytes' | 'name';
@@ -16,6 +17,7 @@ type SortOrder = 'desc' | 'asc';
 interface Props {
   archives: ArchiveRecord[];
   categoryStore: CategoryStore;
+  tagStore: TagStore;
   t: Messages;
   restoringPath: string | null;
   onBack: () => void;
@@ -24,9 +26,17 @@ interface Props {
   onReveal: (path: string) => void;
 }
 
+interface TagSubGroup {
+  /** 标签名；null 表示"未标记"分组 */
+  tagName: string | null;
+  records: ArchiveRecord[];
+}
+
 interface Group {
   category: Category;
   records: ArchiveRecord[];
+  /** 若该分类下有归档项目设置了标签，则按标签拆分出子分组 */
+  tagSubGroups: TagSubGroup[] | null;
 }
 
 /**
@@ -39,6 +49,7 @@ interface Group {
 export function ArchivesScreen({
   archives,
   categoryStore,
+  tagStore,
   t,
   restoringPath,
   onBack,
@@ -71,6 +82,7 @@ export function ArchivesScreen({
 
   // 按分类分组：和概览页一致，按 category.order 升序，空组不显示。
   // 组内顺序沿用上方 filtered 的全局排序（搜索 + 排序已生效）。
+  // 若分类下有归档项目带标签，则进一步按标签拆出子分组。
   const groups = useMemo<Group[]>(() => {
     const all = getAllCategories(categoryStore);
     const map = new Map<string, ArchiveRecord[]>();
@@ -83,14 +95,107 @@ export function ArchivesScreen({
     for (const cat of all) {
       const list = map.get(cat.id);
       if (!list || list.length === 0) continue;
-      result.push({ category: cat, records: list });
+
+      // 检查该分类下是否有归档项目设置了标签（标签按归档原路径关联）
+      const hasAnyTag = list.some(
+        (r) => getProjectTags(r.path, tagStore).length > 0
+      );
+      let tagSubGroups: TagSubGroup[] | null = null;
+      if (hasAnyTag) {
+        const tagMap = new Map<string, { tagName: string; records: ArchiveRecord[] }>();
+        const untagged: ArchiveRecord[] = [];
+        for (const r of list) {
+          const tags = getProjectTags(r.path, tagStore);
+          if (tags.length === 0) {
+            untagged.push(r);
+          } else {
+            for (const tag of tags) {
+              if (!tagMap.has(tag.id))
+                tagMap.set(tag.id, { tagName: tag.name, records: [] });
+              tagMap.get(tag.id)!.records.push(r);
+            }
+          }
+        }
+        tagSubGroups = [];
+        for (const [, group] of tagMap) {
+          tagSubGroups.push({ tagName: group.tagName, records: group.records });
+        }
+        if (untagged.length > 0) {
+          tagSubGroups.push({ tagName: null, records: untagged });
+        }
+      }
+
+      result.push({ category: cat, records: list, tagSubGroups });
     }
     return result;
-  }, [filtered, categoryStore]);
+  }, [filtered, categoryStore, tagStore]);
 
   const totalFreed = useMemo(
     () => archives.reduce((s, r) => s + r.freedBytes, 0),
     [archives]
+  );
+
+  // 抽取列表渲染，以便在"仅分类"与"分类+标签子分组"两种结构下复用
+  const renderArchivedList = (list: ArchiveRecord[]) => (
+    <ul className="archived-list">
+      {list.map((rec) => {
+        const isRestoring = restoringPath === rec.path;
+        const missing = rec.pathExists === false;
+        return (
+          <li key={rec.path} className="archived-item">
+            <div className="archived-item-icon" aria-hidden>
+              📦
+            </div>
+            <div className="archived-item-main">
+              <div className="archived-item-name" title={rec.path}>
+                {rec.name}
+                {missing && (
+                  <span
+                    className="archived-missing"
+                    title={t.homeArchivedMissing}
+                  >
+                    {' '}· {t.homeArchivedMissing}
+                  </span>
+                )}
+              </div>
+              <div className="archived-item-path muted" title={rec.path}>
+                {shortenPath(rec.path, 60)}
+              </div>
+              <div className="archived-item-meta muted">
+                {t.homeArchivedFreed} {formatBytes(rec.freedBytes)} ·{' '}
+                {t.homeArchivedAt}{' '}
+                {formatRelative(rec.archivedAt, t._lang as 'zh' | 'en')}
+              </div>
+            </div>
+            <div className="archived-item-actions">
+              {!missing && (
+                <button
+                  className="link-btn"
+                  onClick={() => onReveal(rec.path)}
+                  title={t.reveal}
+                >
+                  {t.reveal}
+                </button>
+              )}
+              <button
+                className="primary"
+                onClick={() => onRestore(rec)}
+                disabled={missing || isRestoring}
+              >
+                {isRestoring ? t.restoring : t.homeArchivedRestore}
+              </button>
+              <button
+                className="link-btn"
+                onClick={() => onForget(rec.path)}
+                title={t.homeArchivedForgetTitle}
+              >
+                {t.homeArchivedForget}
+              </button>
+            </div>
+          </li>
+        );
+      })}
+    </ul>
   );
 
   return (
@@ -168,71 +273,24 @@ export function ArchivesScreen({
                         {g.records.length} {t.overviewProjectCount}
                       </span>
                     </header>
-                    <ul className="archived-list">
-                      {g.records.map((rec) => {
-                        const isRestoring = restoringPath === rec.path;
-                        const missing = rec.pathExists === false;
-                        return (
-                          <li key={rec.path} className="archived-item">
-                            <div className="archived-item-icon" aria-hidden>
-                              📦
-                            </div>
-                            <div className="archived-item-main">
-                              <div className="archived-item-name" title={rec.path}>
-                                {rec.name}
-                                {missing && (
-                                  <span
-                                    className="archived-missing"
-                                    title={t.homeArchivedMissing}
-                                  >
-                                    {' '}· {t.homeArchivedMissing}
-                                  </span>
-                                )}
-                              </div>
-                              <div
-                                className="archived-item-path muted"
-                                title={rec.path}
-                              >
-                                {shortenPath(rec.path, 60)}
-                              </div>
-                              <div className="archived-item-meta muted">
-                                {t.homeArchivedFreed} {formatBytes(rec.freedBytes)} ·{' '}
-                                {t.homeArchivedAt}{' '}
-                                {formatRelative(
-                                  rec.archivedAt,
-                                  t._lang as 'zh' | 'en'
-                                )}
-                              </div>
-                            </div>
-                            <div className="archived-item-actions">
-                              {!missing && (
-                                <button
-                                  className="link-btn"
-                                  onClick={() => onReveal(rec.path)}
-                                  title={t.reveal}
-                                >
-                                  {t.reveal}
-                                </button>
-                              )}
-                              <button
-                                className="primary"
-                                onClick={() => onRestore(rec)}
-                                disabled={missing || isRestoring}
-                              >
-                                {isRestoring ? t.restoring : t.homeArchivedRestore}
-                              </button>
-                              <button
-                                className="link-btn"
-                                onClick={() => onForget(rec.path)}
-                                title={t.homeArchivedForgetTitle}
-                              >
-                                {t.homeArchivedForget}
-                              </button>
-                            </div>
-                          </li>
-                        );
-                      })}
-                    </ul>
+                    {g.tagSubGroups ? (
+                      g.tagSubGroups.map((sub) => (
+                        <div
+                          key={sub.tagName ?? '__untagged__'}
+                          className="overview-tag-subgroup"
+                        >
+                          <div className="overview-tag-subgroup-head">
+                            <span className="tag-subgroup-name">
+                              {sub.tagName ?? t.tagUntagged}
+                            </span>
+                            <span className="tag-subgroup-count">{sub.records.length}</span>
+                          </div>
+                          {renderArchivedList(sub.records)}
+                        </div>
+                      ))
+                    ) : (
+                      renderArchivedList(g.records)
+                    )}
                   </section>
                 ))}
               </div>

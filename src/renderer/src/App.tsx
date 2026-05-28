@@ -323,13 +323,26 @@ export function App() {
     setCompareGroupId(groupId);
   }, []);
 
+  // 已归档项目路径集合：用于在概览/清理派生时把它们从扫描结果中剔除。
+  // 归档保留了 .git，重新扫描或从历史快照进入都会再次出现，需要在此统一拦截。
+  const archivedPathSet = useMemo(
+    () => new Set(archives.map((a) => a.path)),
+    [archives]
+  );
+
+  // 扣掉已归档项目后的可见项目列表（视为概览的真实数据源）
+  const visibleProjects = useMemo(
+    () => projects.filter((p) => !archivedPathSet.has(p.path)),
+    [projects, archivedPathSet]
+  );
+
   // 当前对比视图要展示的项目列表
   const compareProjects = useMemo<ProjectInfo[]>(() => {
     if (!compareGroupId) return [];
-    return projects.filter(
+    return visibleProjects.filter(
       (p) => p.duplicateGroup?.groupId === compareGroupId
     );
-  }, [compareGroupId, projects]);
+  }, [compareGroupId, visibleProjects]);
 
   // 详情面板要展示的是当前 projects 列表里的最新数据，
   // 防止外部状态变更后面板里还指着旧引用。
@@ -340,15 +353,15 @@ export function App() {
 
   // 概览页经过筛选后的项目列表
   const filteredProjects = useMemo(
-    () => applyFilter(projects, filter, categoryStore, tagStore),
-    [projects, filter, categoryStore, tagStore]
+    () => applyFilter(visibleProjects, filter, categoryStore, tagStore),
+    [visibleProjects, filter, categoryStore, tagStore]
   );
   const filterActive = isFilterActive(filter);
 
   // 「清理」按钮的作用范围：筛选有效时仅限定于筛选后的项目，
-  // 否则针对全部项目。在该范围内收集所有 cleanables 路径与总大小。
+  // 否则针对全部可见项目（已扣除归档）。在该范围内收集所有 cleanables 路径与总大小。
   const cleanScope = useMemo(() => {
-    const targetProjects = filterActive ? filteredProjects : projects;
+    const targetProjects = filterActive ? filteredProjects : visibleProjects;
     const paths: string[] = [];
     let size = 0;
     for (const p of targetProjects) {
@@ -358,17 +371,17 @@ export function App() {
       }
     }
     return { paths, size, projectCount: targetProjects.length };
-  }, [filterActive, filteredProjects, projects]);
+  }, [filterActive, filteredProjects, visibleProjects]);
 
   const selectedSize = useMemo(() => {
     let total = 0;
-    for (const p of projects) {
+    for (const p of visibleProjects) {
       for (const c of p.cleanables) {
         if (selected.has(c.path)) total += c.size;
       }
     }
     return total;
-  }, [projects, selected]);
+  }, [visibleProjects, selected]);
 
   /** 选中目录所属项目中，source === 'local' 的项目。
    *  这些项目没有远程备份，清理前需要在确认框里加强提醒。
@@ -615,6 +628,7 @@ export function App() {
         <ArchivesScreen
           archives={archives}
           categoryStore={categoryStore}
+          tagStore={tagStore}
           t={t}
           restoringPath={restoringPath}
           onBack={handleBackFromArchives}
@@ -677,7 +691,7 @@ export function App() {
             ) : (
               <>
                 <FilterBar
-                  projects={projects}
+                  projects={visibleProjects}
                   filter={filter}
                   categoryStore={categoryStore}
                   tagStore={tagStore}
