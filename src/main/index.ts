@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell } from 'electron';
+import { app, BrowserWindow, Menu, shell } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { registerIpcHandlers } from './ipc/index.js';
@@ -34,6 +34,11 @@ async function createWindow(): Promise<void> {
   // 如果之前是最大化状态，恢复最大化
   if (windowState.isMaximized) {
     mainWindow.maximize();
+  }
+
+  // Windows/Linux 下移除顶部菜单栏
+  if (process.platform !== 'darwin') {
+    mainWindow.setMenu(null);
   }
 
   mainWindow.on('ready-to-show', () => mainWindow?.show());
