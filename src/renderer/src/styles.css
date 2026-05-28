@@ -1281,10 +1281,13 @@ button.ghost-btn:hover:not(:disabled) {
 .warn-block ul {
   margin: 0 0 6px 18px;
   padding: 0;
-  color: var(--text);
+  color: inherit;
 }
 .warn-block ul li {
   line-height: 1.6;
+}
+.warn-block .muted {
+  color: #e0b988;
 }
 
 .cleanable-list {
