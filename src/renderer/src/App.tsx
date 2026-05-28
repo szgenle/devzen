@@ -483,6 +483,49 @@ export function App() {
     setRootDir(dir);
   }, []);
 
+  // ---------------- 单项状态刷新——避免全量重扫 ----------------
+  /**
+   * 轻量刷新单个项目的 git dirty 状态。
+   * 用户在外部 commit 后不应需要重扫整个目录。详情面板打开时
+   * 自动调用，用户也可点刷新按钮手动触发。
+   *
+   * 状态变化后同步要做两件事：
+   *  1. patch 内存中的 projects 数组，主列表的 dirty tag 会随之更新。
+   *  2. 同步写回 history，以免下次从历史进入查看时又看到旧状态。scannedAt 不会被刷新，
+   *     表示这只是局部修正不是一次重新扫描。
+   */
+  const handleRefreshDirty = useCallback(
+    async (project: ProjectInfo) => {
+      try {
+        const dirty = await window.devzen.refreshProjectDirty(project.path);
+        // 单项项目不是 git 仓库或读取失败时保持原状态，避免闪烁
+        if (dirty == null && project.gitDirty == null) return;
+        setProjects((prev) => {
+          let changed = false;
+          const next = prev.map((p) => {
+            if (p.path !== project.path) return p;
+            if (p.gitDirty === dirty) return p;
+            changed = true;
+            return { ...p, gitDirty: dirty };
+          });
+          if (!changed) return prev;
+          // 写回 history：仅在当前 rootDir 还能对上号、且 scannedAt 存在时才作数
+          if (rootDir && scannedAt != null) {
+            void upsertHistoryEntry({
+              rootDir,
+              projects: next,
+              scannedAt
+            }).then(setHistory).catch(() => undefined);
+          }
+          return next;
+        });
+      } catch {
+        // 刷新失败静默重试不仅意义不大，保持原状态给用户看即可
+      }
+    },
+    [rootDir, scannedAt]
+  );
+
   // ---------------- 归档 / 恢复 ----------------
   // 详情面板触发归档：仅打开对话框，实际删除由对话框内部调用
   const handleOpenArchive = useCallback((p: ProjectInfo) => {
@@ -692,6 +735,7 @@ export function App() {
         onDeleteTag={handleDeleteTag}
         onReveal={(p) => window.devzen.revealInFinder(p)}
         onArchive={handleOpenArchive}
+        onRefreshDirty={handleRefreshDirty}
         onOpenWithEditor={handleOpenWithEditor}
         onOpenWithTerminal={handleOpenWithTerminal}
       />

@@ -211,6 +211,12 @@ export interface DevZenAPI {
   forgetArchive(path: string): Promise<void>;
   /** 获取项目详细信息（按需加载，用于重复对比视图） */
   getProjectDetail(path: string): Promise<ProjectDetail>;
+  /**
+   * 轻量刷新单个项目的 git dirty 状态。
+   * 用于详情面板打开 / 手动刷新场景，避免全量重扫。
+   * 返回 true=有未提交修改；false=工作区干净；null=非 git 仓库或检测失败。
+   */
+  refreshProjectDirty(path: string): Promise<boolean | null>;
   /** 用指定 macOS 应用打开项目目录（编辑器场景，例如 "Visual Studio Code"）；空串表示用系统默认行为 `open path` */
   openWithEditor(path: string, editor: string): Promise<void>;
   /** 在指定终端应用中打开项目目录（例如 "Terminal" / "iTerm" / "Warp"） */

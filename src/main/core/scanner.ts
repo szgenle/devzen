@@ -417,14 +417,35 @@ async function readAllGitRemoteUrls(dir: string): Promise<string[]> {
   }
 }
 
-/** 为已知是 git 仓库的项目检测未提交修改 */
-async function readGitDirty(dir: string): Promise<boolean | null> {
+/**
+ * 为已知是 git 仓库的项目检测未提交修改。
+ *
+ * 语义：仅检测 tracked 文件的未提交改动（与 archiver 的 hasUncommitted 对齐），
+ * 不包含 untracked 文件。这样用户 commit 后状态会立即变干净，避免被
+ * 临时脚本 / .env.local / 构建产物误标记为 dirty。
+ *
+ * 同时忽略 macOS 的 .DS_Store —— 它是 Finder 自动重建的元数据，不应视为脏内容。
+ */
+export async function readGitDirty(dir: string): Promise<boolean | null> {
   try {
     const { stdout } = await execAsync('git status --porcelain', {
       cwd: dir,
-      timeout: 3000
+      timeout: 3000,
+      maxBuffer: 10 * 1024 * 1024
     });
-    return stdout.trim().length > 0;
+    for (const raw of stdout.split('\n')) {
+      const line = raw.replace(/\r$/, '');
+      if (!line) continue;
+      // porcelain v1：行首两位是状态码，第 3 位空格，之后是路径
+      const code = line.slice(0, 2);
+      const file = line.slice(3);
+      // untracked（??）不算 dirty：用户尚未 add，可能是临时脚本 / .env.local 等
+      if (code === '??') continue;
+      // .DS_Store 是 macOS Finder 元数据，删除后系统会自动重建，不视为脏内容
+      if (path.basename(file) === '.DS_Store') continue;
+      return true;
+    }
+    return false;
   } catch {
     return null;
   }

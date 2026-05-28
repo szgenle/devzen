@@ -34,6 +34,11 @@ interface Props {
   onReveal: (path: string) => void;
   /** 触发归档流程；source === 'local' 时上层应不触发，仅作兜底 */
   onArchive: (project: ProjectInfo) => void;
+  /**
+   * 刷新该项目的 git dirty 状态。面板打开时会自动调用一次，
+   * 用户也可点 Git 状态行的刷新按钮手动触发。
+   */
+  onRefreshDirty: (project: ProjectInfo) => void;
   /** 用指定 macOS 应用打开项目目录（编辑器） */
   onOpenWithEditor: (project: ProjectInfo, app: string) => void;
   /** 用指定 macOS 应用打开项目目录（终端） */
@@ -88,6 +93,7 @@ export function ProjectDetailPanel({
   onDeleteTag,
   onReveal,
   onArchive,
+  onRefreshDirty,
   onOpenWithEditor,
   onOpenWithTerminal
 }: Props) {
@@ -99,6 +105,8 @@ export function ProjectDetailPanel({
   const [newTagName, setNewTagName] = useState('');
   // 快速启动菜单：'editor' / 'terminal' / null
   const [launchMenu, setLaunchMenu] = useState<'editor' | 'terminal' | null>(null);
+  // 刷新 dirty 状态的 loading，避免连击与表明“正在刷新”
+  const [refreshingDirty, setRefreshingDirty] = useState(false);
 
   // 切换不同项目时收起新建态，避免输入残留
   useEffect(() => {
@@ -108,6 +116,27 @@ export function ProjectDetailPanel({
     setNewTagName('');
     setLaunchMenu(null);
   }, [project?.path]);
+
+  // 面板打开或切换到另一个项目时，自动拉一次最新的 git dirty 状态。
+  // 这能涵盖最常见场景：用户在外部 commit 后点开该项目详情，状态能及时变干净。
+  // 项目路径未变时不重复拉（避免与本组件外部状态变动报错重复触发）。
+  useEffect(() => {
+    if (!project) return;
+    if (!project.isGitRepo) return;
+    onRefreshDirty(project);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project?.path]);
+
+  const handleManualRefreshDirty = async () => {
+    if (!project || refreshingDirty) return;
+    setRefreshingDirty(true);
+    try {
+      onRefreshDirty(project);
+    } finally {
+      // 上层刷新是 fire-and-forget，这里快速复位loading，避免按钮闪烁
+      setTimeout(() => setRefreshingDirty(false), 400);
+    }
+  };
 
   // 关闭时按 ESC
   useEffect(() => {
@@ -359,8 +388,33 @@ export function ProjectDetailPanel({
             {project.gitDirty != null && (
               <>
                 <dt>{t.detailGitStatus}</dt>
-                <dd className={project.gitDirty ? 'detail-warn' : ''}>
-                  {project.gitDirty ? t.detailGitDirty : t.detailGitClean}
+                <dd className={project.gitDirty ? 'detail-warn detail-git-status' : 'detail-git-status'}>
+                  <span>{project.gitDirty ? t.detailGitDirty : t.detailGitClean}</span>
+                  <button
+                    type="button"
+                    className="detail-refresh-btn"
+                    onClick={handleManualRefreshDirty}
+                    disabled={refreshingDirty}
+                    title={t.detailGitRefreshTitle}
+                    aria-label={t.detailGitRefresh}
+                  >
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      aria-hidden="true"
+                      className={refreshingDirty ? 'spin' : ''}
+                    >
+                      <path
+                        d="M13.5 8a5.5 5.5 0 1 1-1.6-3.88M13.5 3v3h-3"
+                        stroke="currentColor"
+                        strokeWidth="1.4"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </button>
                 </dd>
               </>
             )}

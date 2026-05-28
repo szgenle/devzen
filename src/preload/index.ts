@@ -56,6 +56,9 @@ const api: DevZenAPI = {
   getProjectDetail: (target: string) =>
     ipcRenderer.invoke(IpcChannels.GetProjectDetail, target) as Promise<ProjectDetail>,
 
+  refreshProjectDirty: (target: string) =>
+    ipcRenderer.invoke(IpcChannels.RefreshProjectDirty, target) as Promise<boolean | null>,
+
   openWithEditor: (target: string, editor: string) =>
     ipcRenderer.invoke(IpcChannels.OpenWithEditor, target, editor) as Promise<void>,
 

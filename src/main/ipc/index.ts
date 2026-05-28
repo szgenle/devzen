@@ -4,7 +4,7 @@ import { promisify } from 'node:util';
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import { IpcChannels } from '@shared/ipc-channels.js';
-import { scanProjects, getProjectDetail } from '../core/scanner.js';
+import { scanProjects, getProjectDetail, readGitDirty } from '../core/scanner.js';
 import { cleanDirectories } from '../core/cleaner.js';
 import {
   archive as archiveProject,
@@ -119,6 +119,19 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(IpcChannels.GetProjectDetail, async (_event, target: string) => {
     return getProjectDetail(target);
+  });
+
+  // 轻量刷新单个项目的 git dirty 状态：避免全量重扫。
+  // 在详情面板打开 / 手动刷新时调用，让用户外部 commit 后能实时看到状态变化。
+  // 返回值与 ProjectInfo.gitDirty 一致：true=有修改；false=干净；null=非 git 仓库或检测失败。
+  ipcMain.handle(IpcChannels.RefreshProjectDirty, async (_event, target: string) => {
+    try {
+      const st = await fs.stat(path.join(target, '.git'));
+      if (!st.isDirectory()) return null;
+    } catch {
+      return null;
+    }
+    return readGitDirty(target);
   });
 
   ipcMain.handle(
