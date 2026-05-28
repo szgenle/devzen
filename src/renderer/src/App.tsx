@@ -712,7 +712,7 @@ export function App() {
               {localOnlyProjects.length > 0 && (
                 <div className="warn-block">
                   <strong>{t.confirmLocalWarn}</strong>
-                  <ul>
+                  <ul style={{ maxHeight: 160, overflowY: 'auto' }}>
                     {localOnlyProjects.map((p) => (
                       <li key={p.path}>{p.name}</li>
                     ))}
