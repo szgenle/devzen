@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import type { ArchiveRecord } from '@shared/types';
+import type { ArchiveRecord, RemoteProvider } from '@shared/types';
+import type { ViewMode } from '../App';
 import { shortenPath, formatRelative, formatBytes } from '../utils/format';
 import {
   type Category,
@@ -18,13 +19,38 @@ interface Props {
   archives: ArchiveRecord[];
   categoryStore: CategoryStore;
   tagStore: TagStore;
+  viewMode: ViewMode;
   t: Messages;
   restoringPath: string | null;
   onBack: () => void;
+  onViewModeChange: (mode: ViewMode) => void;
   onRestore: (record: ArchiveRecord) => void;
   onForget: (path: string) => void;
   onReveal: (path: string) => void;
 }
+
+/** 与 OverviewList 保持一致的来源 / 生态映射 */
+const PROVIDER_KEYS: Record<RemoteProvider, { label: string; titleKey: string; cls: string }> = {
+  github: { label: 'GitHub', titleKey: 'providerGithub', cls: 'tag-source-github' },
+  gitlab: { label: 'GitLab', titleKey: 'providerGitlab', cls: 'tag-source-remote' },
+  bitbucket: { label: 'Bitbucket', titleKey: 'providerBitbucket', cls: 'tag-source-remote' },
+  gitee: { label: 'Gitee', titleKey: 'providerGitee', cls: 'tag-source-remote' },
+  codeup: { label: 'Codeup', titleKey: 'providerCodeup', cls: 'tag-source-remote' },
+  coding: { label: 'Coding', titleKey: 'providerCoding', cls: 'tag-source-remote' },
+  unknown: { label: '', titleKey: 'providerUnknown', cls: 'tag-source-remote' }
+};
+
+const ECO_LABELS: Record<string, string> = {
+  node: 'Node',
+  rust: 'Rust',
+  go: 'Go',
+  python: 'Python',
+  'java-maven': 'Maven',
+  'java-gradle': 'Gradle',
+  'apple-xcode': 'Xcode',
+  'apple-spm': 'SwiftPM',
+  android: 'Android'
+};
 
 interface TagSubGroup {
   /** 标签名；null 表示"未标记"分组 */
@@ -50,9 +76,11 @@ export function ArchivesScreen({
   archives,
   categoryStore,
   tagStore,
+  viewMode,
   t,
   restoringPath,
   onBack,
+  onViewModeChange,
   onRestore,
   onForget,
   onReveal
@@ -198,18 +226,147 @@ export function ArchivesScreen({
     </ul>
   );
 
+  // 卡片网格渲染：项目名独占首行，徽标分左右两端对齐，与概览卡片保持一致
+  const renderArchivedGrid = (list: ArchiveRecord[]) => (
+    <div className="archived-card-grid">
+      {list.map((rec) => {
+        const isRestoring = restoringPath === rec.path;
+        const missing = rec.pathExists === false;
+        const sourceTags =
+          rec.remoteProviders.length > 0
+            ? rec.remoteProviders.map((p) => {
+                const meta = PROVIDER_KEYS[p];
+                return {
+                  label: meta.label || t.providerUnknownLabel,
+                  title: t[meta.titleKey],
+                  cls: meta.cls
+                };
+              })
+            : [{ label: t.localOnly, title: t.localOnlyTitle, cls: 'tag-source-local' }];
+        return (
+          <div key={rec.path} className="archived-card" title={rec.path}>
+            <div className="archived-card-header">
+              <span className="archived-card-icon" aria-hidden>
+                📦
+              </span>
+              <span className="project-name" title={rec.name}>
+                {rec.name}
+              </span>
+            </div>
+            {(sourceTags.length > 0 || rec.ecosystems.length > 0 || missing) && (
+              <div className="archived-card-tags">
+                <div className="archived-card-tags-left">
+                  {sourceTags.map((meta) => (
+                    <span key={meta.label} className={`tag ${meta.cls}`} title={meta.title}>
+                      {meta.label}
+                    </span>
+                  ))}
+                  {missing && (
+                    <span className="tag tag-dirty" title={t.homeArchivedMissing}>
+                      {t.homeArchivedMissing}
+                    </span>
+                  )}
+                </div>
+                <div className="archived-card-tags-right">
+                  {rec.ecosystems.map((e) => (
+                    <span key={e} className={`tag tag-${e}`}>
+                      {ECO_LABELS[e] ?? (e === 'unknown' ? t.ecoUnknown : e)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="archived-card-meta muted">
+              <span className="archived-card-freed">
+                {t.homeArchivedFreed} {formatBytes(rec.freedBytes)}
+              </span>
+              <span className="archived-card-time">
+                {formatRelative(rec.archivedAt, t._lang as 'zh' | 'en')}
+              </span>
+            </div>
+            <div
+              className="archived-card-path muted"
+              title={rec.path}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!missing) onReveal(rec.path);
+              }}
+            >
+              {shortenPath(rec.path, 40)}
+            </div>
+            <div className="archived-card-actions">
+              <button
+                className="link-btn"
+                onClick={() => onReveal(rec.path)}
+                disabled={missing}
+                title={t.reveal}
+              >
+                {t.reveal}
+              </button>
+              <button
+                className="primary"
+                onClick={() => onRestore(rec)}
+                disabled={missing || isRestoring}
+              >
+                {isRestoring ? t.restoring : t.homeArchivedRestore}
+              </button>
+              <button
+                className="link-btn"
+                onClick={() => onForget(rec.path)}
+                title={t.homeArchivedForgetTitle}
+              >
+                {t.homeArchivedForget}
+              </button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  const renderArchived = (list: ArchiveRecord[]) =>
+    viewMode === 'card' ? renderArchivedGrid(list) : renderArchivedList(list);
+
   return (
     <div className="archives-screen">
-      <div className="archives-card">
-        <div className="archives-head">
-          <button className="link-btn back-btn" onClick={onBack}>
-            ← {t.back}
+      <header className="archives-header">
+        <div className="archives-header-left">
+          <button
+            className="ghost-btn back-btn"
+            onClick={onBack}
+            title={t.backToHome}
+          >
+            {t.backHome}
           </button>
-          <div className="archives-head-main">
-            <h1 className="archives-title">{t.homeArchivedTitle}</h1>
-            <p className="archives-tagline muted">{t.homeArchivedTagline}</p>
-          </div>
+          <span className="brand">⌬ DevZen</span>
         </div>
+        <div className="archives-header-center">
+          <h1 className="archives-title">{t.homeArchivedTitle}</h1>
+        </div>
+        <div className="archives-header-right">
+          {archives.length > 0 && (
+            <div className="view-toggle" title={t.viewToggle}>
+              <button
+                className={`view-toggle-btn ${viewMode === 'list' ? 'active' : ''}`}
+                onClick={() => onViewModeChange('list')}
+                title={t.viewList}
+              >
+                ☰
+              </button>
+              <button
+                className={`view-toggle-btn ${viewMode === 'card' ? 'active' : ''}`}
+                onClick={() => onViewModeChange('card')}
+                title={t.viewCard}
+              >
+                ▦
+              </button>
+            </div>
+          )}
+        </div>
+      </header>
+
+      <main className="archives-main">
+        <p className="archives-tagline muted">{t.homeArchivedTagline}</p>
 
         {archives.length === 0 ? (
           <div className="archives-empty muted">{t.homeArchivedEmpty}</div>
@@ -285,11 +442,11 @@ export function ArchivesScreen({
                             </span>
                             <span className="tag-subgroup-count">{sub.records.length}</span>
                           </div>
-                          {renderArchivedList(sub.records)}
+                          {renderArchived(sub.records)}
                         </div>
                       ))
                     ) : (
-                      renderArchivedList(g.records)
+                      renderArchived(g.records)
                     )}
                   </section>
                 ))}
@@ -297,7 +454,7 @@ export function ArchivesScreen({
             )}
           </>
         )}
-      </div>
+      </main>
     </div>
   );
 }

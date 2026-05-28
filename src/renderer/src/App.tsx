@@ -629,9 +629,11 @@ export function App() {
           archives={archives}
           categoryStore={categoryStore}
           tagStore={tagStore}
+          viewMode={viewMode}
           t={t}
           restoringPath={restoringPath}
           onBack={handleBackFromArchives}
+          onViewModeChange={handleViewModeChange}
           onRestore={handleRestoreArchive}
           onForget={handleForgetArchive}
           onReveal={(p) => window.devzen.revealInFinder(p)}
