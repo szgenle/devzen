@@ -269,6 +269,15 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(IpcChannels.DeleteBundle, async (_event, bundleId: string) => {
     return deleteBundle(bundleId);
   });
+
+  // ---------------- 帮助文档 ----------------
+  // 直接在浏览器打开 GitHub 上的使用说明，避免在应用内嵌 webview 增加复杂度。
+  // GitHub 路径里的中文目录名走 RFC 3986 百分号编码，避免极少数浏览器对中文 URL 处理异常。
+  ipcMain.handle(IpcChannels.OpenHelp, async () => {
+    const url =
+      'https://github.com/szgenle/devzen/blob/main/docs/%E4%BD%BF%E7%94%A8%E8%AF%B4%E6%98%8E.md';
+    await shell.openExternal(url);
+  });
 }
 
 /** 识别 macOS `open -a` 在找不到目标应用时返回的错误信息。 */

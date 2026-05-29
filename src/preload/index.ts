@@ -119,7 +119,9 @@ const api: DevZenAPI = {
     return () => {
       ipcRenderer.removeListener(IpcChannels.BundleProgress, listener);
     };
-  }
+  },
+
+  openHelp: () => ipcRenderer.invoke(IpcChannels.OpenHelp) as Promise<void>
 };
 
 contextBridge.exposeInMainWorld('devzen', api);

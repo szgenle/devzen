@@ -30,5 +30,7 @@ export const IpcChannels = {
   VerifyBundle: 'devzen:verifyBundle',
   RestoreBundle: 'devzen:restoreBundle',
   DeleteBundle: 'devzen:deleteBundle',
-  BundleProgress: 'devzen:bundleProgress'
+  BundleProgress: 'devzen:bundleProgress',
+  /** 打开应用使用说明（GitHub 上的 docs/使用说明.md） */
+  OpenHelp: 'devzen:openHelp'
 } as const;

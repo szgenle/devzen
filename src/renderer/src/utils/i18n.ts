@@ -10,6 +10,8 @@ const zh: Record<string, string> = {
   // --- 通用 ---
   appName: 'DevZen',
   settings: '首选项',
+  help: '使用说明',
+  helpTitle: '在浏览器打开 GitHub 上的使用说明',
   back: '返回',
   cancel: '取消',
   confirm: '确认',
@@ -321,6 +323,8 @@ const en: Record<string, string> = {
   _lang: 'en',
   appName: 'DevZen',
   settings: 'Preferences',
+  help: 'Help',
+  helpTitle: 'Open the user guide on GitHub',
   back: 'Back',
   cancel: 'Cancel',
   confirm: 'Confirm',

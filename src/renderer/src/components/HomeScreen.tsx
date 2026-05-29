@@ -58,14 +58,24 @@ export function HomeScreen({
               {t.homeHistoryTagline}
             </p>
           </div>
-          <button
-            className="icon-btn settings-btn"
-            onClick={onOpenSettings}
-            title={t.settings}
-            aria-label={t.settings}
-          >
-            ⚙
-          </button>
+          <div className="home-head-actions">
+            <button
+              className="icon-btn settings-btn"
+              onClick={() => window.devzen.openHelp()}
+              title={t.helpTitle}
+              aria-label={t.help}
+            >
+              ?
+            </button>
+            <button
+              className="icon-btn settings-btn"
+              onClick={onOpenSettings}
+              title={t.settings}
+              aria-label={t.settings}
+            >
+              ⚙
+            </button>
+          </div>
         </div>
 
         {history.length > 0 && (
@@ -187,14 +197,24 @@ function WelcomeCard({
       <div className="home-card">
         <div className="home-card-top">
           <div className="home-brand">⌬ DevZen</div>
-          <button
-            className="icon-btn settings-btn"
-            onClick={onOpenSettings}
-            title={t.settings}
-            aria-label={t.settings}
-          >
-            ⚙
-          </button>
+          <div className="home-head-actions">
+            <button
+              className="icon-btn settings-btn"
+              onClick={() => window.devzen.openHelp()}
+              title={t.helpTitle}
+              aria-label={t.help}
+            >
+              ?
+            </button>
+            <button
+              className="icon-btn settings-btn"
+              onClick={onOpenSettings}
+              title={t.settings}
+              aria-label={t.settings}
+            >
+              ⚙
+            </button>
+          </div>
         </div>
         <h1 className="home-title">{t.homeWelcome}</h1>
         <p className="home-tagline">{t.homeTagline}</p>

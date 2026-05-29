@@ -1934,6 +1934,11 @@ button.ghost-btn:hover:not(:disabled) {
   align-items: center;
   margin-bottom: 8px;
 }
+.home-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
 
 /* ---------------- Archive / Restore ---------------- */
 

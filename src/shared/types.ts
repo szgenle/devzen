@@ -336,6 +336,9 @@ export interface DevZenAPI {
   deleteBundle(bundleId: string): Promise<void>;
   /** 订阅打包/解包进度（返回取消函数） */
   onBundleProgress(cb: (p: BundleProgress) => void): () => void;
+
+  /** 在系统默认浏览器打开使用说明（GitHub 上的 docs/使用说明.md） */
+  openHelp(): Promise<void>;
 }
 
 declare global {
