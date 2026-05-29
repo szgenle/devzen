@@ -2261,7 +2261,8 @@ button.ghost-btn:hover:not(:disabled) {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-width: 1200px;
+  /* 跟随窗口宽度自适应；超大屏才限宽避免行过长难读 */
+  max-width: 1600px;
   width: 100%;
   margin: 0 auto;
   box-sizing: border-box;
@@ -2439,7 +2440,8 @@ button.ghost-btn:hover:not(:disabled) {
 /* --- 归档卡片网格视图：与 overview-card 体系保持一致 --- */
 .archived-card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  /* 卡片最小宽放宽到 280px，确保英文「Bundle & remove dir」+「Restore」可同行 */
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 10px;
   padding: 4px 0 4px;
 }
