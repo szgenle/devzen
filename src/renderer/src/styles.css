@@ -2631,3 +2631,201 @@ button.ghost-btn:hover:not(:disabled) {
 .btn-close:hover {
   background: var(--bg-hover);
 }
+
+/* ===================== 冷备包 (bundle) 相关样式 ===================== */
+
+/* —— 设置页：备份目录区块 —— */
+.settings-desc {
+  font-size: 12px;
+  margin: 4px 0 8px 0;
+  line-height: 1.5;
+}
+.settings-backup-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-elev);
+  margin-bottom: 8px;
+}
+.settings-backup-path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 12px;
+  color: var(--text);
+}
+.settings-backup-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* —— 安全提示软警告（比 .warn-block 更轻量） —— */
+.warn-block.warn-soft {
+  margin-top: 6px;
+  background: transparent;
+  border: 1px dashed #d2992288;
+  color: var(--text-muted);
+  font-size: 12px;
+  padding: 8px 10px;
+}
+
+/* —— 归档项目下挂的 bundle 列表 —— */
+.bundle-toggle-row {
+  padding: 4px 16px 4px 56px;
+  font-size: 12px;
+}
+.bundle-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px 16px 12px 56px;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.bundle-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-elev);
+}
+.bundle-item-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.bundle-item-name {
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 12px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bundle-item-meta {
+  font-size: 12px;
+}
+.bundle-item-sha {
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+}
+.bundle-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* 卡片视图下嵌入的 bundle 区，缩进与卡片对齐 */
+.archived-card .bundle-toggle-row {
+  padding: 4px 0 0 0;
+}
+.archived-card .bundle-list {
+  padding: 4px 0 0 0;
+  background: transparent;
+}
+
+/* —— 孤立 bundle 区段 —— */
+.orphan-bundles-section {
+  margin-top: 16px;
+}
+
+/* —— 进度对话框 —— */
+.bundle-progress-modal {
+  min-width: 380px;
+  max-width: 520px;
+}
+.bundle-progress-bar-wrap {
+  width: 100%;
+  height: 8px;
+  background: var(--bg-elev-2);
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 12px 0 8px 0;
+}
+.bundle-progress-bar {
+  height: 100%;
+  background: var(--accent);
+  transition: width 200ms ease-out;
+}
+.bundle-progress-bar.is-indeterminate {
+  width: 40%;
+  animation: bundle-progress-indeterminate 1.4s linear infinite;
+}
+@keyframes bundle-progress-indeterminate {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(250%); }
+}
+.bundle-progress-meta {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.bundle-progress-entry {
+  font-size: 12px;
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+  margin-top: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* —— 恢复 bundle 对话框 —— */
+.restore-bundle-modal {
+  min-width: 460px;
+  max-width: 600px;
+}
+.restore-bundle-row {
+  display: grid;
+  grid-template-columns: 88px 1fr;
+  gap: 12px;
+  align-items: start;
+  margin: 8px 0;
+}
+.restore-bundle-key {
+  font-size: 12px;
+  color: var(--text-muted);
+  padding-top: 6px;
+}
+.restore-bundle-val {
+  min-width: 0;
+  font-size: 13px;
+}
+.restore-bundle-val .small {
+  font-size: 12px;
+}
+.restore-bundle-input {
+  width: 100%;
+  padding: 6px 8px;
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 12px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+.restore-bundle-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.restore-bundle-actions-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+.restore-bundle-hint {
+  margin: 12px 0 8px 0;
+  font-size: 12px;
+}

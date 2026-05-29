@@ -1,14 +1,19 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import { IpcChannels } from '@shared/ipc-channels.js';
 import type {
+  AppSettings,
   ArchiveRecord,
   ArchiveResult,
+  BundleProgress,
+  BundleRecord,
+  BundleResult,
   CleanResult,
   DevZenAPI,
   HistoryEntry,
   ProjectDetail,
   ProjectDirtyInfo,
   ProjectInfo,
+  RestoreBundleResult,
   RestoreResult,
   ScanProgress
 } from '@shared/types';
@@ -75,7 +80,43 @@ const api: DevZenAPI = {
     ipcRenderer.invoke(IpcChannels.RemoveHistory, rootDir) as Promise<HistoryEntry[]>,
 
   bulkMergeHistory: (entries: HistoryEntry[]) =>
-    ipcRenderer.invoke(IpcChannels.BulkMergeHistory, entries) as Promise<HistoryEntry[]>
+    ipcRenderer.invoke(IpcChannels.BulkMergeHistory, entries) as Promise<HistoryEntry[]>,
+
+  // ---------------- 冷备包（bundle） ----------------
+  getSettings: () =>
+    ipcRenderer.invoke(IpcChannels.GetSettings) as Promise<AppSettings>,
+
+  setBackupDir: (dir: string) =>
+    ipcRenderer.invoke(IpcChannels.SetBackupDir, dir) as Promise<AppSettings>,
+
+  pickBackupDir: () =>
+    ipcRenderer.invoke(IpcChannels.PickBackupDir) as Promise<string | null>,
+
+  pickDir: (title: string) =>
+    ipcRenderer.invoke(IpcChannels.PickDir, title) as Promise<string | null>,
+
+  bundleArchive: (archivePath: string) =>
+    ipcRenderer.invoke(IpcChannels.BundleArchive, archivePath) as Promise<BundleResult>,
+
+  listBundles: () =>
+    ipcRenderer.invoke(IpcChannels.ListBundles) as Promise<BundleRecord[]>,
+
+  verifyBundle: (bundleId: string) =>
+    ipcRenderer.invoke(IpcChannels.VerifyBundle, bundleId) as Promise<{ ok: boolean; error?: string }>,
+
+  restoreBundle: (bundleId: string, targetDir: string) =>
+    ipcRenderer.invoke(IpcChannels.RestoreBundle, bundleId, targetDir) as Promise<RestoreBundleResult>,
+
+  deleteBundle: (bundleId: string) =>
+    ipcRenderer.invoke(IpcChannels.DeleteBundle, bundleId) as Promise<void>,
+
+  onBundleProgress: (cb: (p: BundleProgress) => void) => {
+    const listener = (_e: unknown, payload: BundleProgress) => cb(payload);
+    ipcRenderer.on(IpcChannels.BundleProgress, listener);
+    return () => {
+      ipcRenderer.removeListener(IpcChannels.BundleProgress, listener);
+    };
+  }
 };
 
 contextBridge.exposeInMainWorld('devzen', api);

@@ -1,5 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { ArchiveRecord, CleanResult, ProjectInfo, RestoreResult, ScanProgress } from '@shared/types';
+import type {
+  AppSettings,
+  ArchiveRecord,
+  BundleProgress,
+  BundleRecord,
+  CleanResult,
+  ProjectInfo,
+  RestoreResult,
+  ScanProgress
+} from '@shared/types';
 import { OverviewList } from './components/OverviewList';
 import { CleanupList } from './components/CleanupList';
 import { ProjectDetailPanel } from './components/ProjectDetailPanel';
@@ -10,6 +19,8 @@ import { ActionBar } from './components/ActionBar';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { ArchiveDialog } from './components/ArchiveDialog';
 import { RestoreResultDialog } from './components/RestoreResultDialog';
+import { BundleProgressDialog } from './components/BundleProgressDialog';
+import { RestoreBundleDialog } from './components/RestoreBundleDialog';
 import { DuplicateCompare } from './components/DuplicateCompare';
 import { ArchivesScreen } from './components/ArchivesScreen';
 import { SettingsScreen } from './components/SettingsScreen';
@@ -102,6 +113,20 @@ export function App() {
   // 当前打开的重复对比视图的组 ID；null 表示未打开
   const [compareGroupId, setCompareGroupId] = useState<string | null>(null);
 
+  // ---------------- 冷备包（bundle） ----------------
+  // 备份设置：最重要的是 backupDir 是否设置
+  const [settings, setSettings] = useState<AppSettings>({ backupDir: null });
+  // 冷备包列表
+  const [bundles, setBundles] = useState<BundleRecord[]>([]);
+  // 正在压缩中的归档路径，用于禁用按钮
+  const [bundlingPath, setBundlingPath] = useState<string | null>(null);
+  // 打包/解包进度，驱动 BundleProgressDialog
+  const [bundleProgress, setBundleProgress] = useState<BundleProgress | null>(null);
+  const [bundlePhase, setBundlePhase] = useState<'bundle' | 'restore'>('bundle');
+  // 当前打开的恢复对话框目标 bundle
+  const [restoreBundleTarget, setRestoreBundleTarget] = useState<BundleRecord | null>(null);
+  const [restoreBundleBusy, setRestoreBundleBusy] = useState(false);
+
   // 应用主题到 <html> 标签
   useEffect(() => {
     const resolved = resolveTheme(prefs.theme);
@@ -126,11 +151,20 @@ export function App() {
     });
     // 加载归档列表
     window.devzen.listArchives().then(setArchives).catch(() => undefined);
+    // 加载 settings 与 bundle 列表
+    window.devzen.getSettings().then(setSettings).catch(() => undefined);
+    window.devzen.listBundles().then(setBundles).catch(() => undefined);
   }, []);
 
   // 订阅扫描进度
   useEffect(() => {
     const off = window.devzen.onScanProgress((p) => setProgress(p));
+    return off;
+  }, []);
+
+  // 订阅冷备包进度
+  useEffect(() => {
+    const off = window.devzen.onBundleProgress((p) => setBundleProgress(p));
     return off;
   }, []);
 
@@ -606,6 +640,133 @@ export function App() {
     [t.forgetConfirm]
   );
 
+  // ---------------- 冷备包 handler ----------------
+  /** 压缩归档为冷备包；进度由 onBundleProgress 驱动对话框 */
+  const handleBundleArchive = useCallback(
+    async (rec: ArchiveRecord) => {
+      if (!settings.backupDir) {
+        alert(t.bundleBtnDisabledNoBackupDir);
+        return;
+      }
+      setBundlingPath(rec.path);
+      setBundlePhase('bundle');
+      // 启动时先占位，让 BundleProgressDialog 开始计时 3s
+      setBundleProgress({
+        id: rec.path,
+        phase: 'bundle',
+        bytesProcessed: 0,
+        bytesTotal: 0
+      });
+      try {
+        const result = await window.devzen.bundleArchive(rec.path);
+        if (!result.success) {
+          alert(t.bundleFailed.replace('{err}', result.error ?? ''));
+        } else {
+          // 刷新 bundle 列表
+          const next = await window.devzen.listBundles();
+          setBundles(next);
+        }
+      } catch (e) {
+        alert(t.bundleFailed.replace('{err}', (e as Error).message));
+      } finally {
+        setBundlingPath(null);
+        setBundleProgress(null);
+      }
+    },
+    [settings.backupDir, t.bundleBtnDisabledNoBackupDir, t.bundleFailed]
+  );
+
+  /** 打开从冷备包恢复的对话框 */
+  const handleOpenRestoreBundle = useCallback((b: BundleRecord) => {
+    setRestoreBundleTarget(b);
+  }, []);
+
+  /** 对话框点「开始恢复」 */
+  const handleConfirmRestoreBundle = useCallback(
+    async (targetDir: string) => {
+      if (!restoreBundleTarget) return;
+      const bundle = restoreBundleTarget;
+      setRestoreBundleBusy(true);
+      setBundlePhase('restore');
+      setBundleProgress({
+        id: bundle.id,
+        phase: 'restore',
+        bytesProcessed: 0,
+        bytesTotal: bundle.sizeBytes
+      });
+      try {
+        const result = await window.devzen.restoreBundle(bundle.id, targetDir);
+        setRestoreBundleTarget(null);
+        if (!result.success) {
+          alert(t.restoreBundleFailed.replace('{err}', result.error ?? ''));
+        } else {
+          // 恢复后同时刷新 archives 与 bundles
+          const [a, b2] = await Promise.all([
+            window.devzen.listArchives(),
+            window.devzen.listBundles()
+          ]);
+          setArchives(a);
+          setBundles(b2);
+          // 以复用现有 RestoreResultDialog 呈现后续建议
+          setRestoreResult({
+            path: result.path ?? targetDir,
+            success: true,
+            followUpHints: result.followUpHints
+          });
+        }
+      } catch (e) {
+        alert(t.restoreBundleFailed.replace('{err}', (e as Error).message));
+      } finally {
+        setRestoreBundleBusy(false);
+        setBundleProgress(null);
+      }
+    },
+    [restoreBundleTarget, t.restoreBundleFailed]
+  );
+
+  /** 删除冷备包 */
+  const handleDeleteBundle = useCallback(
+    async (b: BundleRecord) => {
+      const fileName = b.bundlePath.split(/[\\/]/).pop() ?? b.name;
+      const ok = window.confirm(
+        t.bundleDeleteConfirm.replace('{name}', fileName)
+      );
+      if (!ok) return;
+      try {
+        await window.devzen.deleteBundle(b.id);
+        const next = await window.devzen.listBundles();
+        setBundles(next);
+      } catch (e) {
+        alert((e as Error).message);
+      }
+    },
+    [t.bundleDeleteConfirm]
+  );
+
+  /** 校验冷备包完整性 */
+  const handleVerifyBundle = useCallback(
+    async (b: BundleRecord) => {
+      try {
+        const result = await window.devzen.verifyBundle(b.id);
+        if (result.ok) {
+          alert(t.bundleVerifyOk);
+        } else {
+          alert(t.bundleVerifyFail.replace('{err}', result.error ?? ''));
+        }
+      } catch (e) {
+        alert(t.bundleVerifyFail.replace('{err}', (e as Error).message));
+      }
+    },
+    [t.bundleVerifyOk, t.bundleVerifyFail]
+  );
+
+  // 进入设置页后返回首页时重拉 settings，以便备份目录变更后 ArchivesScreen 能提交按钮
+  useEffect(() => {
+    if (view === 'home' || view === 'archives') {
+      window.devzen.getSettings().then(setSettings).catch(() => undefined);
+    }
+  }, [view]);
+
   return (
     <div className={`app app-${view === 'settings' || view === 'archives' ? 'home' : view}`}>
       {view === 'home' && (
@@ -627,6 +788,9 @@ export function App() {
       {view === 'archives' && (
         <ArchivesScreen
           archives={archives}
+          bundles={bundles}
+          bundlingPath={bundlingPath}
+          hasBackupDir={Boolean(settings.backupDir)}
           categoryStore={categoryStore}
           tagStore={tagStore}
           viewMode={viewMode}
@@ -637,6 +801,10 @@ export function App() {
           onRestore={handleRestoreArchive}
           onForget={handleForgetArchive}
           onReveal={(p) => window.devzen.revealInFinder(p)}
+          onBundle={handleBundleArchive}
+          onRestoreBundle={handleOpenRestoreBundle}
+          onDeleteBundle={handleDeleteBundle}
+          onVerifyBundle={handleVerifyBundle}
         />
       )}
 
@@ -822,6 +990,18 @@ export function App() {
             setCompareGroupId(null);
             handleOpenArchive(p);
           }}
+        />
+      )}
+
+      <BundleProgressDialog progress={bundleProgress} phase={bundlePhase} t={t} />
+
+      {restoreBundleTarget && (
+        <RestoreBundleDialog
+          bundle={restoreBundleTarget}
+          busy={restoreBundleBusy}
+          t={t}
+          onCancel={() => setRestoreBundleTarget(null)}
+          onConfirm={handleConfirmRestoreBundle}
         />
       )}
     </div>

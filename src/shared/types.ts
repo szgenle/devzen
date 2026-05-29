@@ -173,6 +173,86 @@ export interface ProjectDirtyInfo {
   detail: string;
 }
 
+/**
+ * 冷备包（bundle）：归档项目压缩为单一 .tar.gz 文件后的元信息。
+ *
+ * 与 ArchiveRecord 解耦，因为 bundle 是用户主动产出的「冷备份」：
+ *  - 同一项目允许多次打包，按 archivedAt + bundledAt 区分版本（id 全局唯一）
+ *  - 即使原归档目录被恢复或删除，bundle 仍可独立存在
+ *  - bundle 内嵌 devzen-manifest.json，索引丢失时可手动 unbundle 还原
+ */
+export interface BundleRecord {
+  /** uuid v4，主键 */
+  id: string;
+  /** 归档时的原项目根目录绝对路径，恢复时作为默认目标位置 */
+  originalPath: string;
+  /** 显示名（项目根目录名） */
+  name: string;
+  /** .tar.gz 绝对路径（位于用户配置的备份目录下） */
+  bundlePath: string;
+  /** 打包时间戳（毫秒） */
+  bundledAt: number;
+  /** 压缩包字节数 */
+  sizeBytes: number;
+  /** bundle 文件 sha256，恢复前校验 */
+  sha256: string;
+  /** 原归档时记录的远程 URL */
+  remoteUrl: string;
+  /** 原归档时识别到的远程托管商 */
+  remoteProviders: RemoteProvider[];
+  /** 原归档时识别到的项目生态，用于恢复后给出 followUpHints */
+  ecosystems: EcosystemId[];
+  /** 原归档时间（从 ArchiveRecord 复制） */
+  archivedAt: number;
+  /** 列表渲染时刷新；不持久化。bundle 文件是否仍存在 */
+  bundleExists?: boolean;
+}
+
+/** 打包/解包过程的进度事件 */
+export interface BundleProgress {
+  /** 操作 id（与 BundleRecord.id 一致；解包时为 bundle id） */
+  id: string;
+  /** 'bundle' = 正在压缩；'restore' = 正在解压恢复 */
+  phase: 'bundle' | 'restore';
+  /** 已处理字节数 */
+  bytesProcessed: number;
+  /** 总字节数（压缩时为源文件总大小，解压时为 bundle 大小） */
+  bytesTotal: number;
+  /** 当前正在处理的文件相对路径（可空） */
+  currentEntry?: string;
+}
+
+/** 打包结果 */
+export interface BundleResult {
+  success: boolean;
+  record?: BundleRecord;
+  error?: string;
+}
+
+/** 解包恢复结果 */
+export interface RestoreBundleResult {
+  success: boolean;
+  /** 解压后的项目目录 */
+  path?: string;
+  /** 是否完成最终的 git restore（一步到位时为 true） */
+  restoredFromGit: boolean;
+  /** 后续建议执行的命令（npm install / cargo build 等） */
+  followUpHints: string[];
+  error?: string;
+}
+
+/** 用户首选项中的存储设置 */
+export interface AppSettings {
+  /** 冷备包统一存放目录；null 表示尚未配置 */
+  backupDir: string | null;
+}
+
+/** 选择目录的结果 */
+export interface PickDirResult {
+  /** null 表示用户取消 */
+  path: string | null;
+}
+
 /** 扫描历史条目（主进程 history.json 的单元，也是 IPC 传输形态） */
 export interface HistoryEntry {
   /** 扫描根目录绝对路径，作为索引主键 */
@@ -229,6 +309,28 @@ export interface DevZenAPI {
   removeHistory(rootDir: string): Promise<HistoryEntry[]>;
   /** 一次性把若干历史条目合并入主进程存档，用于从旧 localStorage 迁移 */
   bulkMergeHistory(entries: HistoryEntry[]): Promise<HistoryEntry[]>;
+
+  // ---------------- 冷备包（bundle） ----------------
+  /** 读取应用配置（含备份目录） */
+  getSettings(): Promise<AppSettings>;
+  /** 设置备份目录（绝对路径），返回更新后的 settings */
+  setBackupDir(dir: string): Promise<AppSettings>;
+  /** 打开系统目录选择对话框，让用户选备份目录 */
+  pickBackupDir(): Promise<string | null>;
+  /** 通用目录选择对话框（用于选恮复目标目录等场景） */
+  pickDir(title: string): Promise<string | null>;
+  /** 将一个已归档项目压缩为冷备包（写入用户配置的备份目录） */
+  bundleArchive(archivePath: string): Promise<BundleResult>;
+  /** 列出全部冷备包（自动刷新 bundleExists） */
+  listBundles(): Promise<BundleRecord[]>;
+  /** 校验单个 bundle 的 sha256 完整性 */
+  verifyBundle(bundleId: string): Promise<{ ok: boolean; error?: string }>;
+  /** 从冷备包恢复到目标目录（不存在则创建；存在且非空则报错） */
+  restoreBundle(bundleId: string, targetDir: string): Promise<RestoreBundleResult>;
+  /** 删除冷备包（删除 .tar.gz 文件 + 索引条目） */
+  deleteBundle(bundleId: string): Promise<void>;
+  /** 订阅打包/解包进度（返回取消函数） */
+  onBundleProgress(cb: (p: BundleProgress) => void): () => void;
 }
 
 declare global {

@@ -18,5 +18,16 @@ export const IpcChannels = {
   ListHistory: 'devzen:listHistory',
   UpsertHistory: 'devzen:upsertHistory',
   RemoveHistory: 'devzen:removeHistory',
-  BulkMergeHistory: 'devzen:bulkMergeHistory'
+  BulkMergeHistory: 'devzen:bulkMergeHistory',
+  // 冷备包（bundle）
+  GetSettings: 'devzen:getSettings',
+  SetBackupDir: 'devzen:setBackupDir',
+  PickBackupDir: 'devzen:pickBackupDir',
+  PickDir: 'devzen:pickDir',
+  BundleArchive: 'devzen:bundleArchive',
+  ListBundles: 'devzen:listBundles',
+  VerifyBundle: 'devzen:verifyBundle',
+  RestoreBundle: 'devzen:restoreBundle',
+  DeleteBundle: 'devzen:deleteBundle',
+  BundleProgress: 'devzen:bundleProgress'
 } as const;

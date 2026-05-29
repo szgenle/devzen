@@ -19,7 +19,19 @@ import {
   remove as removeHistory,
   upsert as upsertHistory
 } from '../core/history-store.js';
-import type { HistoryEntry, ScanProgress } from '@shared/types';
+import {
+  bundleArchive,
+  deleteBundle,
+  listBundles,
+  restoreBundle,
+  verifyBundle
+} from '../core/bundler.js';
+import {
+  getDefaultBackupDir,
+  getSettings,
+  setBackupDir
+} from '../core/settings-store.js';
+import type { BundleProgress, HistoryEntry, ScanProgress } from '@shared/types';
 
 const execFileAsync = promisify(execFile);
 
@@ -168,6 +180,79 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(IpcChannels.BulkMergeHistory, (_event, entries: HistoryEntry[]) => {
     return bulkMergeHistory(entries);
+  });
+
+  // ---------------- 冷备包（bundle） ----------------
+
+  ipcMain.handle(IpcChannels.GetSettings, async () => {
+    const s = await getSettings();
+    // 首次运行 backupDir 为 null；不自动创建目录，仅返回推荐路径供 UI 提示。
+    return s;
+  });
+
+  ipcMain.handle(IpcChannels.SetBackupDir, async (_event, dir: string) => {
+    if (typeof dir !== 'string' || !dir.trim()) {
+      throw new Error('备份目录不能为空');
+    }
+    return setBackupDir(dir);
+  });
+
+  ipcMain.handle(IpcChannels.PickBackupDir, async (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    const defaultPath = getDefaultBackupDir();
+    const result = await dialog.showOpenDialog(win!, {
+      title: '选择冷备包备份目录',
+      defaultPath,
+      properties: ['openDirectory', 'createDirectory']
+    });
+    if (result.canceled || result.filePaths.length === 0) return null;
+    return result.filePaths[0];
+  });
+
+  ipcMain.handle(IpcChannels.PickDir, async (event, title: string) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    const result = await dialog.showOpenDialog(win!, {
+      title: typeof title === 'string' && title ? title : '选择目录',
+      properties: ['openDirectory', 'createDirectory']
+    });
+    if (result.canceled || result.filePaths.length === 0) return null;
+    return result.filePaths[0];
+  });
+
+  ipcMain.handle(IpcChannels.BundleArchive, async (event, archivePath: string) => {
+    const sender = event.sender;
+    const settings = await getSettings();
+    if (!settings.backupDir) {
+      return {
+        success: false,
+        error: '请先在设置中选择冷备包备份目录'
+      };
+    }
+    return bundleArchive(archivePath, settings.backupDir, (p: BundleProgress) => {
+      if (!sender.isDestroyed()) sender.send(IpcChannels.BundleProgress, p);
+    });
+  });
+
+  ipcMain.handle(IpcChannels.ListBundles, async () => {
+    return listBundles();
+  });
+
+  ipcMain.handle(IpcChannels.VerifyBundle, async (_event, bundleId: string) => {
+    return verifyBundle(bundleId);
+  });
+
+  ipcMain.handle(
+    IpcChannels.RestoreBundle,
+    async (event, bundleId: string, targetDir: string) => {
+      const sender = event.sender;
+      return restoreBundle(bundleId, targetDir, (p: BundleProgress) => {
+        if (!sender.isDestroyed()) sender.send(IpcChannels.BundleProgress, p);
+      });
+    }
+  );
+
+  ipcMain.handle(IpcChannels.DeleteBundle, async (_event, bundleId: string) => {
+    return deleteBundle(bundleId);
   });
 }
 

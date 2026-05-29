@@ -114,6 +114,7 @@ src/
 - [x] Project categories & tags: personal / work / open-source clone
 - [x] Duplicate detection: find multiple copies of the same repo, side-by-side compare
 - [x] Quick launch: open project in your editor / terminal in one click
+- [x] Cold-backup bundles for archived projects: pack into `.tar.gz` under a user-chosen backup dir with sha256 verification; restore back to original path or a new location
 - [ ] **v0.2.0: Windows support** (port the launcher, expand system-folder exclusion, add `windows-latest` to CI matrix)
 
 ## 🔒 Safety Policy
