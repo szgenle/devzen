@@ -1,4 +1,5 @@
 import { promises as fs } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import type { CleanResult } from '@shared/types';
 import { CLEANABLE_DIR_NAMES } from './cleanable-names.js';
@@ -25,8 +26,17 @@ async function cleanOne(target: string): Promise<CleanResult> {
     return { path: target, success: false, freedBytes: 0, error: '路径必须为绝对路径' };
   }
 
-  const home = process.env.HOME ?? '';
-  if (!home || !target.startsWith(home + path.sep)) {
+  const home = os.homedir();
+  if (!home) {
+    return {
+      path: target,
+      success: false,
+      freedBytes: 0,
+      error: '出于安全考虑，仅允许清理用户家目录内的目录'
+    };
+  }
+  const rel = path.relative(path.normalize(home), path.normalize(target));
+  if (rel === '' || rel.startsWith('..') || path.isAbsolute(rel)) {
     return {
       path: target,
       success: false,

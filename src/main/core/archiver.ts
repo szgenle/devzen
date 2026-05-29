@@ -1,4 +1,5 @@
 import { promises as fs } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -31,11 +32,12 @@ const execAsync = promisify(exec);
  * 归档与恢复都不调用网络，git restore 走本地对象库。
  */
 
-const HOME = process.env.HOME ?? '';
-
 function ensureSafePath(target: string): string | null {
   if (!path.isAbsolute(target)) return '路径必须为绝对路径';
-  if (!HOME || !target.startsWith(HOME + path.sep)) {
+  const home = os.homedir();
+  if (!home) return '出于安全考虑，仅允许操作用户家目录内的项目';
+  const rel = path.relative(path.normalize(home), path.normalize(target));
+  if (rel === '' || rel.startsWith('..') || path.isAbsolute(rel)) {
     return '出于安全考虑，仅允许操作用户家目录内的项目';
   }
   return null;
