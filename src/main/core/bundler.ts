@@ -565,6 +565,54 @@ export async function restoreBundle(
   }
 }
 
+/**
+ * 完全归档：在已归档项目基础上 — 打 bundle → 二次校验 sha256 → 删除原项目目录。
+ *
+ * 事务边界：
+ *  1. bundleArchive 必须 success（含 .tmp → 最终路径 rename + 索引写入）
+ *  2. verifyBundle 必须通过
+ *  3. 任意一步失败都不会触碰原项目目录
+ *
+ * 删除范围：原项目根目录 archivePath 整个递归删除。
+ * 注意：archives.json 中的 ArchiveRecord 不删，列表渲染时 pathExists 会自动变为 false，
+ * 用户可在归档列表点 bundle 恢复回原路径或新位置。
+ */
+export async function bundleAndRemove(
+  archivePath: string,
+  backupDir: string,
+  emit: ProgressEmitter
+): Promise<BundleResult> {
+  const fail = (msg: string): BundleResult => ({ success: false, error: msg });
+
+  // 1) 标准压缩：失败直接返回，原目录未动
+  const result = await bundleArchive(archivePath, backupDir, emit);
+  if (!result.success || !result.record) return result;
+
+  // 2) 二次 sha256 校验：写盘后立即重新读一遍，确保 bundle 落盘真实可信
+  const verify = await verifyBundle(result.record.id);
+  if (!verify.ok) {
+    return fail(
+      `bundle 二次校验失败：${verify.error ?? '未知错误'}（原项目目录已保留）`
+    );
+  }
+
+  // 3) 删除原项目目录：再次校验 home 边界，防御性硬保护
+  try {
+    ensureInsideHome(archivePath, '项目路径');
+  } catch (e) {
+    return fail((e as Error).message);
+  }
+  try {
+    await fs.rm(archivePath, { recursive: true, force: true });
+  } catch (e) {
+    return fail(
+      `删除原目录失败：${(e as Error).message}（bundle 已生成，可在 Finder 中手动删除目录）`
+    );
+  }
+
+  return result;
+}
+
 /** 删除冷备包：删 .tar.gz 文件 + 索引条目 */
 export async function deleteBundle(bundleId: string): Promise<void> {
   const record = await bundleStore.findOne(bundleId);

@@ -25,6 +25,7 @@ export const IpcChannels = {
   PickBackupDir: 'devzen:pickBackupDir',
   PickDir: 'devzen:pickDir',
   BundleArchive: 'devzen:bundleArchive',
+  BundleAndRemove: 'devzen:bundleAndRemove',
   ListBundles: 'devzen:listBundles',
   VerifyBundle: 'devzen:verifyBundle',
   RestoreBundle: 'devzen:restoreBundle',

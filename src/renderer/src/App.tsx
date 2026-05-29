@@ -641,16 +641,17 @@ export function App() {
   );
 
   // ---------------- 冷备包 handler ----------------
-  /** 压缩归档为冷备包；进度由 onBundleProgress 驱动对话框 */
-  const handleBundleArchive = useCallback(
+  /** 完全归档：打 bundle → 二次校验 sha256 → 删除原项目目录（事务化，三步任一失败均不动原目录）。 */
+  const handleBundleAndRemove = useCallback(
     async (rec: ArchiveRecord) => {
       if (!settings.backupDir) {
         alert(t.bundleBtnDisabledNoBackupDir);
         return;
       }
+      const ok = window.confirm(t.bundleAndRemoveConfirm);
+      if (!ok) return;
       setBundlingPath(rec.path);
       setBundlePhase('bundle');
-      // 启动时先占位，让 BundleProgressDialog 开始计时 3s
       setBundleProgress({
         id: rec.path,
         phase: 'bundle',
@@ -658,22 +659,31 @@ export function App() {
         bytesTotal: 0
       });
       try {
-        const result = await window.devzen.bundleArchive(rec.path);
+        const result = await window.devzen.bundleAndRemove(rec.path);
         if (!result.success) {
-          alert(t.bundleFailed.replace('{err}', result.error ?? ''));
+          alert(t.bundleAndRemoveFailed.replace('{err}', result.error ?? ''));
         } else {
-          // 刷新 bundle 列表
-          const next = await window.devzen.listBundles();
-          setBundles(next);
+          // 删目录后 archives 的 pathExists 会变 false，bundles 多一条；二者都要刷新
+          const [a, b] = await Promise.all([
+            window.devzen.listArchives(),
+            window.devzen.listBundles()
+          ]);
+          setArchives(a);
+          setBundles(b);
         }
       } catch (e) {
-        alert(t.bundleFailed.replace('{err}', (e as Error).message));
+        alert(t.bundleAndRemoveFailed.replace('{err}', (e as Error).message));
       } finally {
         setBundlingPath(null);
         setBundleProgress(null);
       }
     },
-    [settings.backupDir, t.bundleBtnDisabledNoBackupDir, t.bundleFailed]
+    [
+      settings.backupDir,
+      t.bundleBtnDisabledNoBackupDir,
+      t.bundleAndRemoveConfirm,
+      t.bundleAndRemoveFailed
+    ]
   );
 
   /** 打开从冷备包恢复的对话框 */
@@ -801,7 +811,7 @@ export function App() {
           onRestore={handleRestoreArchive}
           onForget={handleForgetArchive}
           onReveal={(p) => window.devzen.revealInFinder(p)}
-          onBundle={handleBundleArchive}
+          onBundleAndRemove={handleBundleAndRemove}
           onRestoreBundle={handleOpenRestoreBundle}
           onDeleteBundle={handleDeleteBundle}
           onVerifyBundle={handleVerifyBundle}

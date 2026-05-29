@@ -98,6 +98,9 @@ const api: DevZenAPI = {
   bundleArchive: (archivePath: string) =>
     ipcRenderer.invoke(IpcChannels.BundleArchive, archivePath) as Promise<BundleResult>,
 
+  bundleAndRemove: (archivePath: string) =>
+    ipcRenderer.invoke(IpcChannels.BundleAndRemove, archivePath) as Promise<BundleResult>,
+
   listBundles: () =>
     ipcRenderer.invoke(IpcChannels.ListBundles) as Promise<BundleRecord[]>,
 

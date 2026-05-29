@@ -1333,6 +1333,17 @@ button.ghost-btn:hover:not(:disabled) {
 .link-btn:disabled {
   opacity: 0.5;
 }
+.link-btn.danger {
+  background: transparent;
+  border-color: transparent;
+  color: var(--danger);
+}
+.link-btn.danger:hover:not(:disabled) {
+  background: transparent;
+  border-color: transparent;
+  color: var(--danger-hover);
+  text-decoration: underline;
+}
 
 /* ---------------- Action bar (bottom) ---------------- */
 .action-bar {
@@ -1798,6 +1809,23 @@ button.ghost-btn:hover:not(:disabled) {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+
+/* 冷备包二级弹窗：比默认 modal 宽，并限高滚动 */
+.modal.bundles-modal {
+  min-width: 520px;
+  max-width: 720px;
+  width: min(90vw, 720px);
+}
+.bundles-modal-body {
+  max-height: 60vh;
+  overflow-y: auto;
+  margin-bottom: 14px;
+  /* 表单化滚动的边界，避免在跨主题下看起来像“出框” */
+  padding-right: 4px;
+}
+.bundles-modal-body .bundle-list {
+  margin-top: 0;
 }
 
 .muted {
@@ -2492,12 +2520,23 @@ button.ghost-btn:hover:not(:disabled) {
 }
 .archived-card-actions {
   display: flex;
-  align-items: center;
-  justify-content: flex-end;
+  flex-direction: column;
   gap: 6px;
   margin-top: 2px;
   padding-top: 6px;
   border-top: 1px solid var(--border);
+}
+.archived-card-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.archived-card-actions-row-secondary {
+  justify-content: space-between;
+}
+.archived-card-actions-row-primary {
+  justify-content: flex-end;
 }
 .archived-card-actions button {
   padding: 3px 10px;

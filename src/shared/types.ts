@@ -321,6 +321,11 @@ export interface DevZenAPI {
   pickDir(title: string): Promise<string | null>;
   /** 将一个已归档项目压缩为冷备包（写入用户配置的备份目录） */
   bundleArchive(archivePath: string): Promise<BundleResult>;
+  /**
+   * 完全归档：打 bundle → 二次校验 sha256 → 删除原项目目录。
+   * 三步事务化：任一步失败都不会触碰原目录。
+   */
+  bundleAndRemove(archivePath: string): Promise<BundleResult>;
   /** 列出全部冷备包（自动刷新 bundleExists） */
   listBundles(): Promise<BundleRecord[]>;
   /** 校验单个 bundle 的 sha256 完整性 */

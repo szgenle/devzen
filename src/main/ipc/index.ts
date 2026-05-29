@@ -21,6 +21,7 @@ import {
 } from '../core/history-store.js';
 import {
   bundleArchive,
+  bundleAndRemove,
   deleteBundle,
   listBundles,
   restoreBundle,
@@ -229,6 +230,20 @@ export function registerIpcHandlers(): void {
       };
     }
     return bundleArchive(archivePath, settings.backupDir, (p: BundleProgress) => {
+      if (!sender.isDestroyed()) sender.send(IpcChannels.BundleProgress, p);
+    });
+  });
+
+  ipcMain.handle(IpcChannels.BundleAndRemove, async (event, archivePath: string) => {
+    const sender = event.sender;
+    const settings = await getSettings();
+    if (!settings.backupDir) {
+      return {
+        success: false,
+        error: '请先在设置中选择冷备包备份目录'
+      };
+    }
+    return bundleAndRemove(archivePath, settings.backupDir, (p: BundleProgress) => {
       if (!sender.isDestroyed()) sender.send(IpcChannels.BundleProgress, p);
     });
   });

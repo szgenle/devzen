@@ -30,7 +30,7 @@ interface Props {
   onRestore: (record: ArchiveRecord) => void;
   onForget: (path: string) => void;
   onReveal: (path: string) => void;
-  onBundle: (record: ArchiveRecord) => void;
+  onBundleAndRemove: (record: ArchiveRecord) => void;
   onRestoreBundle: (b: BundleRecord) => void;
   onDeleteBundle: (b: BundleRecord) => void;
   onVerifyBundle: (b: BundleRecord) => void;
@@ -94,7 +94,7 @@ export function ArchivesScreen({
   onRestore,
   onForget,
   onReveal,
-  onBundle,
+  onBundleAndRemove,
   onRestoreBundle,
   onDeleteBundle,
   onVerifyBundle
@@ -102,8 +102,8 @@ export function ArchivesScreen({
   const [keyword, setKeyword] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('archivedAt');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
-  // 记录已展开 bundle 列表的归档路径
-  const [expandedPath, setExpandedPath] = useState<Set<string>>(new Set());
+  // 当前在二级弹窗中查看冷备包的归档路径；null 表示未打开
+  const [bundlesDialogPath, setBundlesDialogPath] = useState<string | null>(null);
 
   // 按 originalPath 聚合 bundle，方便按归档记录快速查询
   const bundlesByOriginal = useMemo(() => {
@@ -123,14 +123,18 @@ export function ArchivesScreen({
     [bundles, archivedPaths]
   );
 
-  const togglePath = (p: string) => {
-    setExpandedPath((prev) => {
-      const next = new Set(prev);
-      if (next.has(p)) next.delete(p);
-      else next.add(p);
-      return next;
-    });
-  };
+  const openBundlesDialog = (p: string) => setBundlesDialogPath(p);
+  const closeBundlesDialog = () => setBundlesDialogPath(null);
+
+  // 弹窗对应的归档记录与 bundle 列表
+  const dialogRecord = useMemo(
+    () => (bundlesDialogPath ? archives.find((a) => a.path === bundlesDialogPath) ?? null : null),
+    [bundlesDialogPath, archives]
+  );
+  const dialogBundles = useMemo(
+    () => (bundlesDialogPath ? bundlesByOriginal.get(bundlesDialogPath) ?? [] : []),
+    [bundlesDialogPath, bundlesByOriginal]
+  );
 
   /** 底层 bundle 列表，在 list 与 card 视图中复用 */
   const renderBundleList = (list: BundleRecord[]) => (
@@ -278,7 +282,6 @@ export function ArchivesScreen({
         const missing = rec.pathExists === false;
         const isBundling = bundlingPath === rec.path;
         const recBundles = bundlesByOriginal.get(rec.path) ?? [];
-        const expanded = expandedPath.has(rec.path);
         return (
           <li key={rec.path} className="archived-item">
             <div className="archived-item-row">
@@ -317,18 +320,18 @@ export function ArchivesScreen({
                 </button>
               )}
               <button
-                className="link-btn"
-                onClick={() => onBundle(rec)}
+                className="link-btn danger"
+                onClick={() => onBundleAndRemove(rec)}
                 disabled={missing || isBundling || !hasBackupDir}
                 title={
                   !hasBackupDir
                     ? t.bundleBtnDisabledNoBackupDir
                     : missing
                     ? t.bundleBtnDisabledMissing
-                    : t.bundleBtnTitle
+                    : t.bundleAndRemoveTitle
                 }
               >
-                {isBundling ? t.archiving : t.bundleBtn}
+                {isBundling ? t.archiving : t.bundleAndRemoveBtn}
               </button>
               <button
                 className="primary"
@@ -350,15 +353,12 @@ export function ArchivesScreen({
               <div className="bundle-toggle-row">
                 <button
                   className="link-btn"
-                  onClick={() => togglePath(rec.path)}
+                  onClick={() => openBundlesDialog(rec.path)}
                 >
-                  {expanded
-                    ? t.bundleListToggleHide
-                    : t.bundleListToggleShow.replace('{count}', String(recBundles.length))}
+                  {t.bundleListToggleShow.replace('{count}', String(recBundles.length))}
                 </button>
               </div>
             )}
-            {expanded && renderBundleList(recBundles)}
           </li>
         );
       })}
@@ -373,7 +373,6 @@ export function ArchivesScreen({
         const missing = rec.pathExists === false;
         const isBundling = bundlingPath === rec.path;
         const recBundles = bundlesByOriginal.get(rec.path) ?? [];
-        const expanded = expandedPath.has(rec.path);
         const sourceTags =
           rec.remoteProviders.length > 0
             ? rec.remoteProviders.map((p) => {
@@ -437,56 +436,57 @@ export function ArchivesScreen({
               {shortenPath(rec.path, 40)}
             </div>
             <div className="archived-card-actions">
-              <button
-                className="link-btn"
-                onClick={() => onReveal(rec.path)}
-                disabled={missing}
-                title={t.reveal}
-              >
-                {t.reveal}
-              </button>
-              <button
-                className="link-btn"
-                onClick={() => onBundle(rec)}
-                disabled={missing || isBundling || !hasBackupDir}
-                title={
-                  !hasBackupDir
-                    ? t.bundleBtnDisabledNoBackupDir
-                    : missing
-                    ? t.bundleBtnDisabledMissing
-                    : t.bundleBtnTitle
-                }
-              >
-                {isBundling ? t.archiving : t.bundleBtn}
-              </button>
-              <button
-                className="primary"
-                onClick={() => onRestore(rec)}
-                disabled={missing || isRestoring}
-              >
-                {isRestoring ? t.restoring : t.homeArchivedRestore}
-              </button>
-              <button
-                className="link-btn"
-                onClick={() => onForget(rec.path)}
-                title={t.homeArchivedForgetTitle}
-              >
-                {t.homeArchivedForget}
-              </button>
+              <div className="archived-card-actions-row archived-card-actions-row-secondary">
+                <button
+                  className="link-btn"
+                  onClick={() => onReveal(rec.path)}
+                  disabled={missing}
+                  title={t.reveal}
+                >
+                  {t.reveal}
+                </button>
+                <button
+                  className="link-btn"
+                  onClick={() => onForget(rec.path)}
+                  title={t.homeArchivedForgetTitle}
+                >
+                  {t.homeArchivedForget}
+                </button>
+              </div>
+              <div className="archived-card-actions-row archived-card-actions-row-primary">
+                <button
+                  className="link-btn danger"
+                  onClick={() => onBundleAndRemove(rec)}
+                  disabled={missing || isBundling || !hasBackupDir}
+                  title={
+                    !hasBackupDir
+                      ? t.bundleBtnDisabledNoBackupDir
+                      : missing
+                      ? t.bundleBtnDisabledMissing
+                      : t.bundleAndRemoveTitle
+                  }
+                >
+                  {isBundling ? t.archiving : t.bundleAndRemoveBtn}
+                </button>
+                <button
+                  className="primary"
+                  onClick={() => onRestore(rec)}
+                  disabled={missing || isRestoring}
+                >
+                  {isRestoring ? t.restoring : t.homeArchivedRestore}
+                </button>
+              </div>
             </div>
             {recBundles.length > 0 && (
               <div className="bundle-toggle-row">
                 <button
                   className="link-btn"
-                  onClick={() => togglePath(rec.path)}
+                  onClick={() => openBundlesDialog(rec.path)}
                 >
-                  {expanded
-                    ? t.bundleListToggleHide
-                    : t.bundleListToggleShow.replace('{count}', String(recBundles.length))}
+                  {t.bundleListToggleShow.replace('{count}', String(recBundles.length))}
                 </button>
               </div>
             )}
-            {expanded && renderBundleList(recBundles)}
           </div>
         );
       })}
@@ -637,6 +637,32 @@ export function ArchivesScreen({
           </section>
         )}
       </main>
+
+      {/* 二级弹窗：查看单个归档项的冷备包列表 */}
+      {dialogRecord && (
+        <div className="modal-mask" onClick={closeBundlesDialog}>
+          <div
+            className="modal bundles-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3>
+              {t.bundleDialogTitle.replace('{name}', dialogRecord.name)}
+            </h3>
+            <div className="bundles-modal-body">
+              {dialogBundles.length === 0 ? (
+                <p className="muted">{t.bundleListEmpty}</p>
+              ) : (
+                renderBundleList(dialogBundles)
+              )}
+            </div>
+            <div className="modal-actions">
+              <button className="primary" onClick={closeBundlesDialog}>
+                {t.close}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
