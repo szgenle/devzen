@@ -69,7 +69,7 @@
     ],
     "mac": {
       "category": "public.app-category.developer-tools",
-      "icon": "build/icon.png",
+      "icon": "resources/icon.png",
       "target": [
         "dmg",
         "zip"
@@ -77,7 +77,7 @@
       "identity": null
     },
     "win": {
-      "icon": "build/icon.png",
+      "icon": "resources/icon.png",
       "target": [
         {
           "target": "nsis",
