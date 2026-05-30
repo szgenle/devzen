@@ -350,7 +350,7 @@ export function ArchivesScreen({
                     {t.reveal}
                   </button>
                   <button
-                    className="link-btn danger"
+                    className="link-btn warning"
                     onClick={() => onBundleAndRemove(rec)}
                     disabled={isBundling || !hasBackupDir}
                     title={
@@ -518,7 +518,7 @@ export function ArchivesScreen({
                     <span />
                   )}
                   <button
-                    className="link-btn danger"
+                    className="link-btn warning"
                     onClick={() => onBundleAndRemove(rec)}
                     disabled={isBundling || !hasBackupDir}
                     title={

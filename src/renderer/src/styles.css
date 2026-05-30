@@ -1344,6 +1344,19 @@ button.ghost-btn:hover:not(:disabled) {
   color: var(--danger-hover);
   text-decoration: underline;
 }
+/* warning：警示但不至于「危险」级别（如「打包并清空目录」——可逆，有冷备包兜底） */
+.link-btn.warning {
+  background: transparent;
+  border-color: transparent;
+  color: var(--warning);
+}
+.link-btn.warning:hover:not(:disabled) {
+  background: transparent;
+  border-color: transparent;
+  color: var(--warning);
+  text-decoration: underline;
+  filter: brightness(1.15);
+}
 
 /* ---------------- Action bar (bottom) ---------------- */
 .action-bar {
