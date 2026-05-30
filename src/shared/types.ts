@@ -275,8 +275,8 @@ export interface DevZenAPI {
   scanProjects(rootDir: string): Promise<ProjectInfo[]>;
   /** 订阅扫描进度（返回取消函数） */
   onScanProgress(cb: (p: ScanProgress) => void): () => void;
-  /** 清理指定目录列表 */
-  cleanDirs(paths: string[]): Promise<CleanResult[]>;
+  /** 清理指定目录列表（projectRoots 为当前已扫描的项目根列表，用于安全准入校验） */
+  cleanDirs(paths: string[], projectRoots: string[]): Promise<CleanResult[]>;
   /** 在 Finder 中显示该路径 */
   revealInFinder(path: string): Promise<void>;
   /** 检测项目脏状态（用于归档前置确认） */

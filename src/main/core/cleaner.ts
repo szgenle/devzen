@@ -1,10 +1,30 @@
 import { promises as fs, constants as fsConstants } from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import type { CleanResult } from '@shared/types';
 import { CLEANABLE_DIR_NAMES } from './cleanable-names.js';
 
 const IS_WIN = process.platform === 'win32';
+
+/** Windows 路径不区分大小写；统一规范化用于父子路径比较 */
+function normalizeForCompare(p: string): string {
+  const n = path.normalize(p);
+  return IS_WIN ? n.toLowerCase() : n;
+}
+
+/**
+ * 判断 child 是否严格位于 parent 之下（不允许等于 parent）。
+ * 自动处理跨盘符（Windows）、`..` 逃逸等情况。
+ */
+function isStrictlyInside(child: string, parent: string): boolean {
+  const c = normalizeForCompare(child);
+  const p = normalizeForCompare(parent);
+  if (c === p) return false;
+  const rel = path.relative(p, c);
+  if (!rel || rel === '') return false;
+  if (rel.startsWith('..')) return false;
+  if (path.isAbsolute(rel)) return false; // 跨盘符
+  return true;
+}
 
 /**
  * Windows 下将绝对路径包装为 \\?\ 长路径前缀，绕过 MAX_PATH=260 限制。
@@ -60,53 +80,61 @@ async function pathExists(p: string): Promise<boolean> {
 
 /**
  * 清理给定目录列表。每个目录在删除前会校验：
- * 1. 必须是绝对路径
- * 2. 必须真实存在且为目录
- * 3. 必须位于用户家目录内（防止误删系统目录）
+ *  1. 必须是绝对路径
+ *  2. 必须真实存在且为目录
+ *  3. **必须严格位于某个已知项目根之下**（projectRoots 来自当前扫描结果）
+ *  4. 目录名必须在 CLEANABLE_DIR_NAMES 白名单内
+ *  5. 不允许等于项目根本身（防误删项目）
+ *  6. 不允许是文件系统根 / 用户家目录
  *
- * 二次确认应该在调用方（IPC handler / 渲染层）完成，
- * 此函数只负责执行物理删除，并返回每个目录的释放结果。
+ * 调用方（IPC handler）必须传入项目根列表；二次确认在渲染层完成。
  */
-export async function cleanDirectories(paths: string[]): Promise<CleanResult[]> {
+export async function cleanDirectories(
+  paths: string[],
+  projectRoots: string[]
+): Promise<CleanResult[]> {
+  const roots = (projectRoots || []).filter((r) => typeof r === 'string' && path.isAbsolute(r));
   const results: CleanResult[] = [];
   for (const p of paths) {
-    results.push(await cleanOne(p));
+    results.push(await cleanOne(p, roots));
   }
   return results;
 }
 
-async function cleanOne(target: string): Promise<CleanResult> {
+async function cleanOne(target: string, projectRoots: string[]): Promise<CleanResult> {
   if (!path.isAbsolute(target)) {
     return { path: target, success: false, freedBytes: 0, error: '路径必须为绝对路径' };
   }
 
-  const home = os.homedir();
-  if (!home) {
+  // 安全准入 1：必须严格位于某个已扫描项目根之下
+  const matchedRoot = projectRoots.find((root) => isStrictlyInside(target, root));
+  if (!matchedRoot) {
     return {
       path: target,
       success: false,
       freedBytes: 0,
-      error: '出于安全考虑，仅允许清理用户家目录内的目录'
-    };
-  }
-  const rel = path.relative(path.normalize(home), path.normalize(target));
-  if (rel === '' || rel.startsWith('..') || path.isAbsolute(rel)) {
-    return {
-      path: target,
-      success: false,
-      freedBytes: 0,
-      error: '出于安全考虑，仅允许清理用户家目录内的目录'
+      error: '出于安全考虑，仅允许清理已扫描项目根目录内的子目录'
     };
   }
 
-  // 防止误删项目根本身：只允许已知的可清理目录名
-  // （此处仅做名字层面的二次保护，主要防御已在 scanner 中）
+  // 安全准入 2：白名单目录名（防误删项目根 / 任意目录）
   if (!CLEANABLE_DIR_NAMES.has(path.basename(target))) {
     return {
       path: target,
       success: false,
       freedBytes: 0,
       error: `目录名 ${path.basename(target)} 不在白名单内`
+    };
+  }
+
+  // 安全准入 3：兜底——拒绝任何过短路径（盘根 / 顶层目录）
+  const segs = path.normalize(target).split(path.sep).filter(Boolean);
+  if (segs.length < 2) {
+    return {
+      path: target,
+      success: false,
+      freedBytes: 0,
+      error: '路径过短，拒绝清理'
     };
   }
 

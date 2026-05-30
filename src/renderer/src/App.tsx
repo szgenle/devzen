@@ -501,7 +501,8 @@ export function App() {
     if (selected.size === 0) return;
     setCleaning(true);
     try {
-      const results = await window.devzen.cleanDirs(Array.from(selected));
+      const projectRoots = projects.map((p) => p.path);
+      const results = await window.devzen.cleanDirs(Array.from(selected), projectRoots);
       setLastResults(results);
       // 重新扫描以刷新状态，同时更新该路径的历史记录
       if (rootDir) {
@@ -520,7 +521,7 @@ export function App() {
       setCleaning(false);
       setConfirmOpen(false);
     }
-  }, [selected, rootDir]);
+  }, [selected, rootDir, projects]);
 
   // 首页点击"换个目录"：仅更新当前 rootDir，
   // 不动历史中其他路径的存档。

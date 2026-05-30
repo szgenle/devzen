@@ -37,8 +37,8 @@ const api: DevZenAPI = {
     };
   },
 
-  cleanDirs: (paths: string[]) =>
-    ipcRenderer.invoke(IpcChannels.CleanDirs, paths) as Promise<CleanResult[]>,
+  cleanDirs: (paths: string[], projectRoots: string[]) =>
+    ipcRenderer.invoke(IpcChannels.CleanDirs, paths, projectRoots) as Promise<CleanResult[]>,
 
   revealInFinder: (target: string) =>
     ipcRenderer.invoke(IpcChannels.RevealInFinder, target) as Promise<void>,

@@ -102,9 +102,12 @@ export function registerIpcHandlers(): void {
     });
   });
 
-  ipcMain.handle(IpcChannels.CleanDirs, async (_event, paths: string[]) => {
-    return cleanDirectories(paths);
-  });
+  ipcMain.handle(
+    IpcChannels.CleanDirs,
+    async (_event, paths: string[], projectRoots: string[]) => {
+      return cleanDirectories(paths, projectRoots ?? []);
+    }
+  );
 
   ipcMain.handle(IpcChannels.RevealInFinder, async (_event, target: string) => {
     shell.showItemInFolder(target);
