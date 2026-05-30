@@ -14,6 +14,7 @@ import type {
   RestoreBundleResult
 } from '@shared/types';
 import * as archiveStore from './archive-store.js';
+import { ARCHIVED_GIT_DIR_NAME } from './archiver.js';
 import * as bundleStore from './bundle-store.js';
 
 const execAsync = promisify(exec);
@@ -188,7 +189,11 @@ export async function bundleArchive(
   const record = await archiveStore.findOne(archivePath);
   if (!record) return fail('该项目不在归档列表中，无法打包');
   if (!(await isDirectory(archivePath))) return fail('归档项目目录已不存在');
-  if (!(await isDirectory(path.join(archivePath, '.git')))) {
+  // 兼容两种 .git 命名：新版归档为 .git.devzen-archived，老版归档为 .git
+  const hasGitDir =
+    (await isDirectory(path.join(archivePath, '.git'))) ||
+    (await isDirectory(path.join(archivePath, ARCHIVED_GIT_DIR_NAME)));
+  if (!hasGitDir) {
     return fail('该项目不是 git 仓库 / .git 已丢失');
   }
 
@@ -489,6 +494,20 @@ export async function restoreBundle(
     }
 
     // 6) 跑 git restore（与 archiver.restore 一致的兜底链）
+    // 包内 .git 可能是 .git.devzen-archived（新版归档）或 .git（老版归档），
+    // 解包后统一还原为 .git 再走 git restore，与 archiver.restore 语义对齐。
+    const archivedGitInTarget = path.join(targetDir, ARCHIVED_GIT_DIR_NAME);
+    const liveGitInTarget = path.join(targetDir, '.git');
+    if (
+      (await isDirectory(archivedGitInTarget)) &&
+      !(await isDirectory(liveGitInTarget))
+    ) {
+      try {
+        await fs.rename(archivedGitInTarget, liveGitInTarget);
+      } catch {
+        // rename 失败不阻断：下面 git restore 会自然跳过
+      }
+    }
     let restoredFromGit = false;
     if (await isDirectory(path.join(targetDir, '.git'))) {
       try {

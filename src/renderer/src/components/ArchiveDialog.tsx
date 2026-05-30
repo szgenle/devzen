@@ -79,7 +79,7 @@ export function ArchiveDialog({ project, t, onClose, onArchived }: Props) {
         <h3>{t.archiveTitle.replace('{name}', project.name)}</h3>
 
         <div className="archive-body">
-          <p className="muted">{t.archiveDescClean}</p>
+          <p className="muted" style={{ whiteSpace: 'pre-line' }}>{t.archiveDescClean}</p>
 
           {project.gitRemote && (
             <p className="archive-remote">

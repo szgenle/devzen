@@ -24,13 +24,36 @@ const execAsync = promisify(exec);
  *  - 名字命中 CLEANABLE_DIR_NAMES 的目录（node_modules / target / .next 等）：构建工具可重建
  *
  * 保留：
- *  - .git/                        恢复源 + remote 信息
+ *  - .git/                        恢复源 + remote 信息（归档结束后会被重命名为 .git.devzen-archived）
  *  - untracked 但未 ignored 文件   用户脏文件
  *  - 其它 ignored 文件             .env / .npmrc / .vscode / 本地数据库等不可再生
  *  - 项目根目录本身               作为空墓碑，便于用户在 Finder 看到位置不变
  *
+ * 防误提交：归档完成时把 .git → .git.devzen-archived，让 git/IDE/shell 提示符
+ * 不再识别该目录为活仓库，避免用户在墓碑里 commit/push 把远程覆盖为空仓库。
+ * 恢复时再改回 .git，对老版本归档（仍叫 .git）保持向后兼容。
+ *
  * 归档与恢复都不调用网络，git restore 走本地对象库。
  */
+
+/** 归档后 .git 的重命名形态，作为防误提交标记 */
+export const ARCHIVED_GIT_DIR_NAME = '.git.devzen-archived';
+
+/**
+ * 解析项目当前的 git 目录形态：
+ *  - '.git'                    活仓库 / 老版本归档
+ *  - ARCHIVED_GIT_DIR_NAME    新版归档（已加防误提交标记）
+ *  - null                      不是 git 仓库
+ */
+async function resolveGitDir(
+  projectPath: string
+): Promise<'.git' | typeof ARCHIVED_GIT_DIR_NAME | null> {
+  if (await isDirectory(path.join(projectPath, '.git'))) return '.git';
+  if (await isDirectory(path.join(projectPath, ARCHIVED_GIT_DIR_NAME))) {
+    return ARCHIVED_GIT_DIR_NAME;
+  }
+  return null;
+}
 
 function ensureSafePath(target: string): string | null {
   if (!path.isAbsolute(target)) return '路径必须为绝对路径';
@@ -127,8 +150,16 @@ export async function checkDirty(projectPath: string): Promise<ProjectDirtyInfo>
   };
   const safety = ensureSafePath(projectPath);
   if (safety) return { ...empty, detail: safety };
-  if (!(await isDirectory(path.join(projectPath, '.git')))) {
+  const gitDirState = await resolveGitDir(projectPath);
+  if (!gitDirState) {
     return { ...empty, detail: '该项目不是 git 仓库' };
+  }
+  if (gitDirState === ARCHIVED_GIT_DIR_NAME) {
+    // 已归档项目：.git 已被重命名为防误提交标记，无需也无法做脏检查
+    return {
+      ...empty,
+      detail: '该项目已归档（.git 已重命名为 .git.devzen-archived 防止误提交）'
+    };
   }
 
   const lines: string[] = [];
@@ -420,6 +451,21 @@ export async function archive(projectPath: string, force: boolean): Promise<Arch
   freedBytes += await removeDSStoreFiles(projectPath);
   await cleanupEmptyDirs(projectPath);
 
+  // ---- 重命名 .git → .git.devzen-archived（防误提交标记） ----
+  // 让 git CLI / IDE / shell 提示符不再识别为活仓库，杜绝 git add -A && commit && push 误覆盖远程。
+  try {
+    await fs.rename(
+      path.join(projectPath, '.git'),
+      path.join(projectPath, ARCHIVED_GIT_DIR_NAME)
+    );
+  } catch (e) {
+    return reject(
+      `防误提交标记设置失败（无法将 .git 重命名为 ${ARCHIVED_GIT_DIR_NAME}）：${(e as Error).message}\n\n` +
+        '源码已被删除但 .git 尚未上锁，可手动 git restore . 恢复，或人工将 .git 重命名为 ' +
+        `${ARCHIVED_GIT_DIR_NAME} 后通过 DevZen 恢复。`
+    );
+  }
+
   // ---- 写索引 ----
   const record: ArchiveRecord = {
     path: projectPath,
@@ -439,7 +485,11 @@ export async function archive(projectPath: string, force: boolean): Promise<Arch
   return { path: projectPath, success: true, freedBytes };
 }
 
-/** 列出全部归档记录，pathExists 字段动态刷新 */
+/**
+ * 列出全部归档记录，pathExists 字段动态刷新。
+ * pathExists 仍以「项目目录是否存在」为准，与 .git 形态无关；
+ * 至于 .git / .git.devzen-archived 的命名差异，由 restore 阶段统一兼容。
+ */
 export async function listArchives(): Promise<ArchiveRecord[]> {
   const list = await store.listAll();
   await Promise.all(
@@ -462,7 +512,27 @@ export async function restore(projectPath: string): Promise<RestoreResult> {
   const safety = ensureSafePath(projectPath);
   if (safety) return reject(safety);
   if (!(await isDirectory(projectPath))) return reject('项目目录已不存在，请使用其它工具 git clone 后再做后续操作');
-  if (!(await isDirectory(path.join(projectPath, '.git')))) {
+
+  // 兼容两种命名：新版归档为 .git.devzen-archived，老版归档为 .git。
+  // 若是新版归档，先把目录改回 .git，让 git CLI 重新认得这个仓库。
+  const archivedGit = path.join(projectPath, ARCHIVED_GIT_DIR_NAME);
+  const liveGit = path.join(projectPath, '.git');
+  const hasArchivedGit = await isDirectory(archivedGit);
+  const hasLiveGit = await isDirectory(liveGit);
+  if (hasArchivedGit && hasLiveGit) {
+    return reject(
+      `检测到 .git 与 ${ARCHIVED_GIT_DIR_NAME} 同时存在，状态异常，请人工干预后再恢复`
+    );
+  }
+  if (hasArchivedGit) {
+    try {
+      await fs.rename(archivedGit, liveGit);
+    } catch (e) {
+      return reject(
+        `无法将 ${ARCHIVED_GIT_DIR_NAME} 改回 .git：${(e as Error).message}`
+      );
+    }
+  } else if (!hasLiveGit) {
     return reject('.git 目录缺失，无法离线恢复');
   }
 
