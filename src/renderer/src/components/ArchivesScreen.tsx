@@ -282,6 +282,11 @@ export function ArchivesScreen({
         const missing = rec.pathExists === false;
         const isBundling = bundlingPath === rec.path;
         const recBundles = bundlesByOriginal.get(rec.path) ?? [];
+        // 三态判定：normal / coldOnly / lost
+        // coldOnly：原目录不在了但至少有一个可用冷备包——语义上仍是「安全」，可随时恢复
+        const hasValidBundle = recBundles.some((b) => b.bundleExists !== false);
+        const coldOnly = missing && hasValidBundle;
+        const lost = missing && !hasValidBundle;
         return (
           <li key={rec.path} className="archived-item">
             <div className="archived-item-row">
@@ -291,7 +296,7 @@ export function ArchivesScreen({
             <div className="archived-item-main">
               <div className="archived-item-name" title={rec.path}>
                 {rec.name}
-                {missing && (
+                {lost && (
                   <span
                     className="archived-missing"
                     title={t.homeArchivedMissing}
@@ -310,46 +315,64 @@ export function ArchivesScreen({
               </div>
             </div>
             <div className="archived-item-actions">
-              {!missing && (
-                <button
-                  className="link-btn"
-                  onClick={() => onReveal(rec.path)}
-                  title={t.reveal}
-                >
-                  {t.reveal}
-                </button>
+              {coldOnly ? (
+                <>
+                  <span className="archived-cold-hint">
+                    {t.archivedColdHint}
+                  </span>
+                  <button
+                    className="link-btn"
+                    onClick={() => openBundlesDialog(rec.path)}
+                  >
+                    {t.bundleListToggleShow.replace('{count}', String(recBundles.length))}
+                  </button>
+                </>
+              ) : lost ? (
+                <>
+                  <span className="archived-missing-hint">
+                    {t.archivedMissingHint}
+                  </span>
+                  <button
+                    className="link-btn"
+                    onClick={() => onForget(rec.path)}
+                    title={t.archivedRemoveRecordTitle}
+                  >
+                    {t.archivedRemoveRecord}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    className="link-btn"
+                    onClick={() => onReveal(rec.path)}
+                    title={t.reveal}
+                  >
+                    {t.reveal}
+                  </button>
+                  <button
+                    className="link-btn danger"
+                    onClick={() => onBundleAndRemove(rec)}
+                    disabled={isBundling || !hasBackupDir}
+                    title={
+                      !hasBackupDir
+                        ? t.bundleBtnDisabledNoBackupDir
+                        : t.bundleAndRemoveTitle
+                    }
+                  >
+                    {isBundling ? t.archiving : t.bundleAndRemoveBtn}
+                  </button>
+                  <button
+                    className="primary"
+                    onClick={() => onRestore(rec)}
+                    disabled={isRestoring}
+                  >
+                    {isRestoring ? t.restoring : t.homeArchivedRestore}
+                  </button>
+                </>
               )}
-              <button
-                className="link-btn danger"
-                onClick={() => onBundleAndRemove(rec)}
-                disabled={missing || isBundling || !hasBackupDir}
-                title={
-                  !hasBackupDir
-                    ? t.bundleBtnDisabledNoBackupDir
-                    : missing
-                    ? t.bundleBtnDisabledMissing
-                    : t.bundleAndRemoveTitle
-                }
-              >
-                {isBundling ? t.archiving : t.bundleAndRemoveBtn}
-              </button>
-              <button
-                className="primary"
-                onClick={() => onRestore(rec)}
-                disabled={missing || isRestoring}
-              >
-                {isRestoring ? t.restoring : t.homeArchivedRestore}
-              </button>
-              <button
-                className="link-btn"
-                onClick={() => onForget(rec.path)}
-                title={t.homeArchivedForgetTitle}
-              >
-                {t.homeArchivedForget}
-              </button>
             </div>
             </div>
-            {recBundles.length > 0 && (
+            {!missing && recBundles.length > 0 && (
               <div className="bundle-toggle-row">
                 <button
                   className="link-btn"
@@ -373,6 +396,10 @@ export function ArchivesScreen({
         const missing = rec.pathExists === false;
         const isBundling = bundlingPath === rec.path;
         const recBundles = bundlesByOriginal.get(rec.path) ?? [];
+        // 三态判定：与 renderArchivedList 保持一致
+        const hasValidBundle = recBundles.some((b) => b.bundleExists !== false);
+        const coldOnly = missing && hasValidBundle;
+        const lost = missing && !hasValidBundle;
         const sourceTags =
           rec.remoteProviders.length > 0
             ? rec.remoteProviders.map((p) => {
@@ -394,7 +421,7 @@ export function ArchivesScreen({
                 {rec.name}
               </span>
             </div>
-            {(sourceTags.length > 0 || rec.ecosystems.length > 0 || missing) && (
+            {(sourceTags.length > 0 || rec.ecosystems.length > 0 || lost) && (
               <div className="archived-card-tags">
                 <div className="archived-card-tags-left">
                   {sourceTags.map((meta) => (
@@ -402,7 +429,7 @@ export function ArchivesScreen({
                       {meta.label}
                     </span>
                   ))}
-                  {missing && (
+                  {lost && (
                     <span className="tag tag-dirty" title={t.homeArchivedMissing}>
                       {t.homeArchivedMissing}
                     </span>
@@ -447,46 +474,64 @@ export function ArchivesScreen({
                 </button>
                 <button
                   className="link-btn"
-                  onClick={() => onForget(rec.path)}
-                  title={t.homeArchivedForgetTitle}
-                >
-                  {t.homeArchivedForget}
-                </button>
-              </div>
-              <div className="archived-card-actions-row archived-card-actions-row-primary">
-                <button
-                  className="link-btn danger"
-                  onClick={() => onBundleAndRemove(rec)}
-                  disabled={missing || isBundling || !hasBackupDir}
-                  title={
-                    !hasBackupDir
-                      ? t.bundleBtnDisabledNoBackupDir
-                      : missing
-                      ? t.bundleBtnDisabledMissing
-                      : t.bundleAndRemoveTitle
-                  }
-                >
-                  {isBundling ? t.archiving : t.bundleAndRemoveBtn}
-                </button>
-                <button
-                  className="primary"
                   onClick={() => onRestore(rec)}
                   disabled={missing || isRestoring}
                 >
                   {isRestoring ? t.restoring : t.homeArchivedRestore}
                 </button>
               </div>
+              {coldOnly ? (
+                <div className="archived-card-actions-row archived-card-actions-row-primary">
+                  <span className="archived-cold-hint">
+                    {t.archivedColdHint}
+                  </span>
+                  <button
+                    className="link-btn"
+                    onClick={() => openBundlesDialog(rec.path)}
+                  >
+                    {t.bundleListToggleShow.replace('{count}', String(recBundles.length))}
+                  </button>
+                </div>
+              ) : lost ? (
+                <div className="archived-card-actions-row archived-card-actions-row-primary">
+                  <span className="archived-missing-hint">
+                    {t.archivedMissingHint}
+                  </span>
+                  <button
+                    className="link-btn"
+                    onClick={() => onForget(rec.path)}
+                    title={t.archivedRemoveRecordTitle}
+                  >
+                    {t.archivedRemoveRecord}
+                  </button>
+                </div>
+              ) : (
+                <div className="archived-card-actions-row archived-card-actions-row-primary">
+                  {recBundles.length > 0 ? (
+                    <button
+                      className="link-btn"
+                      onClick={() => openBundlesDialog(rec.path)}
+                    >
+                      {t.bundleListToggleShow.replace('{count}', String(recBundles.length))}
+                    </button>
+                  ) : (
+                    <span />
+                  )}
+                  <button
+                    className="link-btn danger"
+                    onClick={() => onBundleAndRemove(rec)}
+                    disabled={isBundling || !hasBackupDir}
+                    title={
+                      !hasBackupDir
+                        ? t.bundleBtnDisabledNoBackupDir
+                        : t.bundleAndRemoveTitle
+                    }
+                  >
+                    {isBundling ? t.archiving : t.bundleAndRemoveBtn}
+                  </button>
+                </div>
+              )}
             </div>
-            {recBundles.length > 0 && (
-              <div className="bundle-toggle-row">
-                <button
-                  className="link-btn"
-                  onClick={() => openBundlesDialog(rec.path)}
-                >
-                  {t.bundleListToggleShow.replace('{count}', String(recBundles.length))}
-                </button>
-              </div>
-            )}
           </div>
         );
       })}

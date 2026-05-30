@@ -242,6 +242,13 @@ const zh: Record<string, string> = {
   homeArchivedForget: '忘记',
   homeArchivedForgetTitle: '仅从列表中移除，不影响本地目录',
   homeArchivedMissing: '路径已不存在',
+  /** 失效状态下的醒目提示（出现在卡片操作区） */
+  archivedMissingHint: '⚠ 项目目录已丢失',
+  /** 已冷藏状态：目录不在了但有可用冷备包，可随时恢复 */
+  archivedColdHint: '❄ 已冷藏 · 可从冷备包恢复',
+  /** 失效状态下的清理动作；语义比「忘记」更直白 */
+  archivedRemoveRecord: '移除记录',
+  archivedRemoveRecordTitle: '从清单中移除此记录（不影响本地或冷备包）',
   homeArchivedFreed: '释放',
   homeArchivedAt: '归档于',
   homeArchivedEntryTitle: '已归档项目 · {count}',
@@ -543,6 +550,10 @@ const en: Record<string, string> = {
   homeArchivedForget: 'Forget',
   homeArchivedForgetTitle: 'Remove from list only, files untouched',
   homeArchivedMissing: 'Path no longer exists',
+  archivedMissingHint: '⚠ Project folder is missing',
+  archivedColdHint: '❄ Cold-stored · restorable from bundle',
+  archivedRemoveRecord: 'Remove record',
+  archivedRemoveRecordTitle: 'Remove this record from the list (local files and bundles are untouched)',
   homeArchivedFreed: 'Freed',
   homeArchivedAt: 'Archived',
   homeArchivedEntryTitle: 'Archived projects · {count}',

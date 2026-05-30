@@ -2406,6 +2406,23 @@ button.ghost-btn:hover:not(:disabled) {
   color: var(--danger, #f85149);
   font-weight: 500;
 }
+/* 失效状态下卡片/行内的醒目提示文字（非按钮，与按钮同行排版） */
+.archived-missing-hint {
+  color: var(--danger);
+  font-size: 12px;
+  font-weight: 500;
+  /* 在 list 视图里挤占左侧空间，把右侧按钮顶到末端 */
+  margin-right: auto;
+  white-space: nowrap;
+}
+/* 已冷藏状态：目录不在了但有冷备包可恢复——蓝色调，安全感强于 danger */
+.archived-cold-hint {
+  color: var(--accent, #58a6ff);
+  font-size: 12px;
+  font-weight: 500;
+  margin-right: auto;
+  white-space: nowrap;
+}
 .archived-item-actions {
   display: flex;
   align-items: center;
@@ -2543,7 +2560,8 @@ button.ghost-btn:hover:not(:disabled) {
   justify-content: space-between;
 }
 .archived-card-actions-row-primary {
-  justify-content: flex-end;
+  /* 左：hint/查看冷备包，右：危险操作；两端对齐 */
+  justify-content: space-between;
 }
 .archived-card-actions button {
   padding: 3px 10px;
