@@ -1,4 +1,5 @@
 import { promises as fs } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -47,7 +48,9 @@ export async function scanProjects(
 ): Promise<ProjectInfo[]> {
   const maxDepth = options.maxDepth ?? 7;
   const onProgress = options.onProgress;
-  const home = process.env.HOME ?? '';
+  // 跨平台获取家目录：Windows 下 process.env.HOME 通常未定义（用的是 USERPROFILE），
+  // 必须走 os.homedir() 才能跨平台正确拿到路径。
+  const home = os.homedir();
   // 当扫描入口为用户主目录时默认启用系统目录排除
   const skipSystem =
     options.skipSystemDirs ?? (home !== '' && path.resolve(rootDir) === path.resolve(home));

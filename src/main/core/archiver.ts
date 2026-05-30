@@ -1,5 +1,4 @@
 import { promises as fs } from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -13,6 +12,7 @@ import type {
 } from '@shared/types';
 import { CLEANABLE_DIR_NAMES } from './cleanable-names.js';
 import * as store from './archive-store.js';
+import { checkInsideAllowedRoot } from './path-safety.js';
 
 const execAsync = promisify(exec);
 
@@ -56,14 +56,9 @@ async function resolveGitDir(
 }
 
 function ensureSafePath(target: string): string | null {
-  if (!path.isAbsolute(target)) return '路径必须为绝对路径';
-  const home = os.homedir();
-  if (!home) return '出于安全考虑，仅允许操作用户家目录内的项目';
-  const rel = path.relative(path.normalize(home), path.normalize(target));
-  if (rel === '' || rel.startsWith('..') || path.isAbsolute(rel)) {
-    return '出于安全考虑，仅允许操作用户家目录内的项目';
-  }
-  return null;
+  // 路径准入已统一到 path-safety.ts：不再硬卡 home，而是允许
+  // home ∩ 历史扫描根任一之内，解决 Windows 多盘场景下项目被误拒的问题。
+  return checkInsideAllowedRoot(target, '项目路径');
 }
 
 async function isDirectory(p: string): Promise<boolean> {

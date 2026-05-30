@@ -4,6 +4,27 @@
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-05-30
+
+Windows 多盘场景下"扫得了却操作不了"的彻底修复版。围绕**清理 / 归档 / 冷备 / 恢复 / 打开**整条链路，统一了路径安全准入策略，去除了对用户家目录（`os.homedir()`）的硬编码假设。
+
+### 修复
+
+- **Windows 多驱动器场景全面兑现**：以 Android 开发者常见的 `D:\workspace\...`、`E:\code\...` 等非 C 盘项目为代表的合法路径，此前因 cleaner / archiver / bundler 各自硬卡 home 目录，被一律拒绝执行；现已统一改为「家目录 ∪ 历史扫描根」的并集准入，跨盘符场景全部放行
+  - `cleaner`：清理动作改为"项目根 + 白名单目录名"双重准入，跨盘项目可正常释放空间
+  - `archiver` / `bundler`：归档、打包冷备、从冷备恢复三条主流程同步统一准入
+  - `ipc.openWithEditor` / `openWithTerminal`：跨盘项目可正常一键打开编辑器与终端
+- **Windows 清理鲁棒性升级**：补齐 `node_modules` / `.gradle` 等深层目录在 Windows 上的删除短板
+  - 自动应用 `\\?\` 长路径前缀，绕过 MAX_PATH=260 限制
+  - 首次失败时递归清除只读属性（Gradle / npm 缓存常见）后重试一次
+  - `fs.rm` 启用 `maxRetries` / `retryDelay`，缓解被 IDE / 杀软短暂占用导致的 EBUSY
+  - `freedBytes` 改为「删除前后实测差值」，避免显示已清理但磁盘没动的错觉
+- `scanner` 改用 `os.homedir()` 替代 `process.env.HOME`，让"扫描入口为家目录时自动跳过系统目录"在 Windows 上也能正确生效（Windows 走的是 `USERPROFILE`，原本一直未触发）
+
+### 重构
+
+- 新增 `src/main/core/path-safety.ts` 集中维护路径准入逻辑，cleaner / archiver / bundler / ipc 复用同一套实现，杜绝多模块各写一套、漏改一处即埋雷的情况
+
 ## [0.3.0] - 2026-05-29
 
 聚焦**冷备包与归档体系成熟化**：将 v0.1.0 引入的归档系统升级为可打包冷备 + 删除原目录 + 远端可恢复的完整闭环；归档界面补齐分组与双视图；同步打通 CI 自动构建发布流水线，并修掉若干 Windows 平台硬伤。

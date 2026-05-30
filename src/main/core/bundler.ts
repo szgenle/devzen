@@ -16,6 +16,7 @@ import type {
 import * as archiveStore from './archive-store.js';
 import { ARCHIVED_GIT_DIR_NAME } from './archiver.js';
 import * as bundleStore from './bundle-store.js';
+import { ensureInsideAllowedRoot } from './path-safety.js';
 
 const execAsync = promisify(exec);
 
@@ -51,16 +52,8 @@ interface BundleManifest {
   originalSizeBytes: number;
 }
 
-/** 跨平台 home 路径校验，用于备份目录与项目目录 */
-function ensureInsideHome(target: string, label = '路径'): void {
-  if (!path.isAbsolute(target)) throw new Error(`${label}必须为绝对路径`);
-  const home = app.getPath('home');
-  if (!home) throw new Error('无法获取用户主目录');
-  const rel = path.relative(path.normalize(home), path.normalize(target));
-  if (rel === '' || rel.startsWith('..') || path.isAbsolute(rel)) {
-    throw new Error(`出于安全考虑，${label}必须位于用户家目录内`);
-  }
-}
+// 路径安全准入已迁移至 path-safety.ts 的 ensureInsideAllowedRoot。
+// 旧的 ensureInsideHome 因 home 硬卡在 Windows 多盘场景下会误拒合法路径，已废弃。
 
 async function isDirectory(p: string): Promise<boolean> {
   try {
@@ -180,8 +173,8 @@ export async function bundleArchive(
   const fail = (msg: string): BundleResult => ({ success: false, error: msg });
 
   try {
-    ensureInsideHome(archivePath, '项目路径');
-    ensureInsideHome(backupDir, '备份目录');
+    ensureInsideAllowedRoot(archivePath, '项目路径');
+    ensureInsideAllowedRoot(backupDir, '备份目录');
   } catch (e) {
     return fail((e as Error).message);
   }
@@ -376,7 +369,7 @@ export async function restoreBundle(
   });
 
   try {
-    ensureInsideHome(targetDir, '恢复目标目录');
+    ensureInsideAllowedRoot(targetDir, '恢复目标目录');
   } catch (e) {
     return fail((e as Error).message);
   }
@@ -615,9 +608,9 @@ export async function bundleAndRemove(
     );
   }
 
-  // 3) 删除原项目目录：再次校验 home 边界，防御性硬保护
+  // 3) 删除原项目目录：再次校验路径边界，防御性硬保护
   try {
-    ensureInsideHome(archivePath, '项目路径');
+    ensureInsideAllowedRoot(archivePath, '项目路径');
   } catch (e) {
     return fail((e as Error).message);
   }

@@ -19,6 +19,7 @@ import {
   remove as removeHistory,
   upsert as upsertHistory
 } from '../core/history-store.js';
+import { ensureInsideAllowedRoot } from '../core/path-safety.js';
 import {
   bundleArchive,
   bundleAndRemove,
@@ -36,37 +37,8 @@ import type { BundleProgress, HistoryEntry, ScanProgress } from '@shared/types';
 
 const execFileAsync = promisify(execFile);
 
-/**
- * 允许打开家目录内或历史扫描根目录内的项目，避免渲染层把任意路径丢进来。
- * 支持 Windows 多驱动器场景（项目在 C: 以外的其他盘）。
- */
-function ensureInsideAllowedRoot(target: string): void {
-  const home = app.getPath('home');
-  const normalizedTarget = path.normalize(target);
-
-  const allowedBases: string[] = [];
-  if (home) allowedBases.push(path.normalize(home));
-
-  // 读历史扫描根目录，覆盖家目录以外的路径（如 D:\Projects）
-  try {
-    for (const e of listHistory()) {
-      if (e.rootDir) allowedBases.push(path.normalize(e.rootDir));
-    }
-  } catch {
-    // 读历史失败不影响家目录校验
-  }
-
-  if (allowedBases.length === 0) throw new Error('无法确定允许的根目录');
-
-  const isAllowed = allowedBases.some((base) => {
-    const rel = path.relative(base, normalizedTarget);
-    return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
-  });
-
-  if (!isAllowed) {
-    throw new Error('仅允许打开已扫描目录内的项目');
-  }
-}
+// 路径准入校验已统一到 path-safety.ts 的 ensureInsideAllowedRoot：
+// 允许家目录 ∪ 历史扫描根任一之内，兑现 Windows 多驱动器场景（D:\、E:\ 等）。
 
 async function ensureDirectory(target: string): Promise<void> {
   const st = await fs.stat(target);
@@ -153,7 +125,7 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     IpcChannels.OpenWithEditor,
     async (_event, target: string, editor: string) => {
-      ensureInsideAllowedRoot(target);
+      ensureInsideAllowedRoot(target, '项目路径');
       await ensureDirectory(target);
       const appName = (editor ?? '').trim();
       await launchApp('editor', appName, target);
@@ -163,7 +135,7 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     IpcChannels.OpenWithTerminal,
     async (_event, target: string, terminal: string) => {
-      ensureInsideAllowedRoot(target);
+      ensureInsideAllowedRoot(target, '项目路径');
       await ensureDirectory(target);
       const appName = (terminal ?? '').trim();
       await launchApp('terminal', appName, target);
