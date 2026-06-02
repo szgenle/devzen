@@ -95,6 +95,22 @@ export async function scanProjects(
       return;
     }
 
+    // 兜底：目录含 .git 但根层无生态 marker（多平台库、纯文档仓库等）。
+    // 向一级子目录嗅探生态，仍视为项目根，防止子目录被识别为独立项目。
+    const hasGit = entries.some((e) => e.name === '.git');
+    if (hasGit) {
+      const subdirEcos = await detectSubdirEcosystems(dir, entries);
+      const mergedEcosystems = [...new Set(subdirEcos.flatMap((s) => s.ecosystems))];
+      const project = await buildProjectInfo(dir, mergedEcosystems, entries, subdirEcos);
+      projects.push(project);
+      onProgress?.({
+        scannedDirs,
+        foundProjects: projects.length,
+        currentPath: dir
+      });
+      return;
+    }
+
     if (depth >= maxDepth) return;
 
     for (const e of entries) {
@@ -116,6 +132,16 @@ export async function scanProjects(
   // 重复项目分组：基于 remote URL 标准化后匹配
   markDuplicateGroups(projects);
   return projects;
+}
+
+/**
+ * 子目录生态嗅探结果：用于根目录无 marker 但含 .git 的多平台项目。
+ * 例如 lan-beacon 项目根只有 .git + README，实际构建在 android/ 子目录。
+ */
+interface SubdirEcosystem {
+  /** 子目录相对名称，如 "android" */
+  subdir: string;
+  ecosystems: EcosystemId[];
 }
 
 /** 在给定目录中识别命中的生态列表 */
@@ -189,13 +215,43 @@ async function detectAndroid(
   return false;
 }
 
+/**
+ * 从一级子目录中嗅探生态标记。
+ * 用于根目录无 marker 但含 .git 的多平台项目（如 lan-beacon：android/ + godot/）。
+ */
+async function detectSubdirEcosystems(
+  dir: string,
+  entries: import('node:fs').Dirent[]
+): Promise<SubdirEcosystem[]> {
+  const results: SubdirEcosystem[] = [];
+  for (const e of entries) {
+    if (!e.isDirectory()) continue;
+    if (e.name.startsWith('.')) continue;
+    if (HARD_SKIP_DIRS.has(e.name)) continue;
+    if (SOFT_SKIP_DIRS.has(e.name)) continue;
+    const subDir = path.join(dir, e.name);
+    let subEntries: import('node:fs').Dirent[];
+    try {
+      subEntries = await fs.readdir(subDir, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    const ecos = await detectEcosystems(subDir, subEntries);
+    if (ecos.length > 0) {
+      results.push({ subdir: e.name, ecosystems: ecos });
+    }
+  }
+  return results;
+}
+
 /** 组装一个项目的完整信息 */
 async function buildProjectInfo(
   dir: string,
   ecosystems: EcosystemId[],
-  entries: import('node:fs').Dirent[]
+  entries: import('node:fs').Dirent[],
+  subdirEcosystems?: SubdirEcosystem[]
 ): Promise<ProjectInfo> {
-  const cleanables = await collectCleanables(dir, ecosystems);
+  const cleanables = await collectCleanables(dir, ecosystems, subdirEcosystems);
   const cleanableSize = cleanables.reduce((s, c) => s + c.size, 0);
   const isGitRepo = entries.some((e) => e.name === '.git');
   const gitRemote = isGitRepo ? await readGitRemote(dir) : null;
@@ -279,7 +335,8 @@ function inferSuggestedEditor(
 /** 探测项目下所有可清理目录及其大小 */
 async function collectCleanables(
   projectDir: string,
-  ecosystems: EcosystemId[]
+  ecosystems: EcosystemId[],
+  subdirEcosystems?: SubdirEcosystem[]
 ): Promise<CleanableDir[]> {
   const seen = new Map<string, CleanableDir>(); // 以路径去重（多生态可能定义同名目录）
   for (const eco of ecosystems) {
@@ -307,6 +364,39 @@ async function collectCleanables(
   // Android：典型多模块结构，子模块 build/ 是最大头，额外递归收集一级子模块下的 build/ 与 .cxx/
   if (ecosystems.includes('android')) {
     await collectAndroidModuleArtifacts(projectDir, seen);
+  }
+  // 子目录生态：生态标记位于一级子目录内（如 android/build.gradle），
+  // 需要在对应子目录下收集可清理产物。
+  if (subdirEcosystems) {
+    for (const { subdir, ecosystems: subEcos } of subdirEcosystems) {
+      const subPath = path.join(projectDir, subdir);
+      for (const eco of subEcos) {
+        const spec = ECOSYSTEMS.find((s) => s.id === eco);
+        if (!spec) continue;
+        for (const def of spec.cleanableDirs) {
+          const target = path.join(subPath, def.name);
+          if (seen.has(target)) continue;
+          try {
+            const st = await fs.stat(target);
+            if (!st.isDirectory()) continue;
+            const size = await dirSize(target);
+            seen.set(target, {
+              path: target,
+              name: `${subdir}/${def.name}`,
+              size,
+              ecosystem: eco,
+              hint: def.hint
+            });
+          } catch {
+            // 目录不存在
+          }
+        }
+      }
+      // Android 子目录：递归收集其一级子模块下的 build/ 与 .cxx/
+      if (subEcos.includes('android')) {
+        await collectAndroidModuleArtifacts(subPath, seen);
+      }
+    }
   }
   return Array.from(seen.values()).sort((a, b) => b.size - a.size);
 }
