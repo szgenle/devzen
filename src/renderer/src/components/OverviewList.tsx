@@ -14,11 +14,10 @@ import { getDefaultEditor } from '../utils/launchApps';
 import type { Messages } from '../utils/i18n';
 
 /**
- * 项目名前面的"用编辑器打开"按钮。
- * 视觉是文件夹图标，语义和 Finder 里"双击文件夹打开"一致。
- * 点击事件不冒泡，避免触发外层的"打开详情"。
+ * 可点击的项目名，点击后用默认编辑器打开项目目录。
+ * 事件不冒泡，避免触发外层的"打开详情"。
  */
-function OpenInEditorButton({
+function ProjectNameLink({
   project,
   t,
   onOpenWithEditor
@@ -30,25 +29,16 @@ function OpenInEditorButton({
   const editorApp = getDefaultEditor(project);
   const title = `${t.detailLaunchEditorPrefix} ${editorApp} ${t.detailLaunchEditorSuffix}`.trim();
   return (
-    <button
-      type="button"
-      className="project-open-btn"
+    <span
+      className="project-name project-name-link"
       title={title}
-      aria-label={title}
       onClick={(e) => {
         e.stopPropagation();
         onOpenWithEditor(project, editorApp);
       }}
     >
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-        <path
-          d="M1.5 4.5a1 1 0 0 1 1-1H6l1.5 1.5h6a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1v-7.5z"
-          stroke="currentColor"
-          strokeWidth="1.2"
-          strokeLinejoin="round"
-        />
-      </svg>
-    </button>
+      {project.name}
+    </span>
   );
 }
 
@@ -254,8 +244,7 @@ function OverviewRow({ project, t, onReveal, onSelect, onCompareDuplicates, onOp
     <div className="overview-row" onClick={onSelect} title={t.overviewViewDetail}>
       <div className="overview-row-main">
         <div className="overview-name-row">
-          <OpenInEditorButton project={project} t={t} onOpenWithEditor={onOpenWithEditor} />
-          <span className="project-name">{project.name}</span>
+          <ProjectNameLink project={project} t={t} onOpenWithEditor={onOpenWithEditor} />
           {dupGroup && (
             <span
               className="tag tag-duplicate"
@@ -321,8 +310,7 @@ function OverviewCard({ project, t, onReveal, onSelect, onCompareDuplicates, onO
   return (
     <div className="overview-card" onClick={onSelect} title={t.overviewViewDetail}>
       <div className="overview-card-header">
-        <OpenInEditorButton project={project} t={t} onOpenWithEditor={onOpenWithEditor} />
-        <span className="project-name" title={project.name}>{project.name}</span>
+        <ProjectNameLink project={project} t={t} onOpenWithEditor={onOpenWithEditor} />
       </div>
       <div className="overview-card-tags">
         <div className="overview-card-tags-left">

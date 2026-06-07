@@ -1149,30 +1149,17 @@ button.ghost-btn:hover:not(:disabled) {
   font-weight: 600;
 }
 /*
- * 项目名前面的"用编辑器打开"按钮 — 文件夹图标。
- * 默认次要色，hover 变主题色。点击不冒泡，行/卡片其他位置仍打开详情面板。
+ * 可点击的项目名 — 点击后用编辑器打开项目。
+ * 默认正常文本色，hover 变主题色 + 下划线暗示可交互。
  */
-.project-open-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: var(--text-muted);
-  border-radius: 5px;
+.project-name-link {
   cursor: pointer;
-  transition: color 0.15s, background 0.15s;
-  flex-shrink: 0;
+  transition: color 0.15s;
 }
-.project-open-btn:hover {
+.project-name-link:hover {
   color: var(--accent);
-  background: var(--bg-elev-2, rgba(127, 127, 127, 0.12));
-}
-.project-open-btn:active {
-  transform: scale(0.94);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 .project-sub {
   display: flex;
