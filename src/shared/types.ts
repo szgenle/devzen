@@ -107,6 +107,22 @@ export interface CleanResult {
   error?: string;
 }
 
+/** 清理进度事件：逐个目录上报，phase 区分开始处理与处理完成 */
+export interface CleanProgress {
+  /** 当前第几个（1-based） */
+  index: number;
+  /** 总数 */
+  total: number;
+  /** 正在处理的目录绝对路径 */
+  path: string;
+  /** 目录名，如 node_modules */
+  name: string;
+  /** start=开始删除该目录；done=该目录处理完成 */
+  phase: 'start' | 'done';
+  /** phase==='done' 时携带该目录的清理结果 */
+  result?: CleanResult;
+}
+
 /**
  * 归档记录：用于"卸载本地保留远程"功能的元信息。
  * 列表渲染时会动态校验 path 是否仍存在，所以 pathExists 不持久化到 JSON。
@@ -277,6 +293,8 @@ export interface DevZenAPI {
   onScanProgress(cb: (p: ScanProgress) => void): () => void;
   /** 清理指定目录列表（projectRoots 为当前已扫描的项目根列表，用于安全准入校验） */
   cleanDirs(paths: string[], projectRoots: string[]): Promise<CleanResult[]>;
+  /** 订阅清理进度（返回取消函数） */
+  onCleanProgress(cb: (p: CleanProgress) => void): () => void;
   /** 在 Finder 中显示该路径 */
   revealInFinder(path: string): Promise<void>;
   /** 检测项目脏状态（用于归档前置确认） */

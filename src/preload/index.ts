@@ -7,6 +7,7 @@ import type {
   BundleProgress,
   BundleRecord,
   BundleResult,
+  CleanProgress,
   CleanResult,
   DevZenAPI,
   HistoryEntry,
@@ -39,6 +40,14 @@ const api: DevZenAPI = {
 
   cleanDirs: (paths: string[], projectRoots: string[]) =>
     ipcRenderer.invoke(IpcChannels.CleanDirs, paths, projectRoots) as Promise<CleanResult[]>,
+
+  onCleanProgress: (cb: (p: CleanProgress) => void) => {
+    const listener = (_e: unknown, payload: CleanProgress) => cb(payload);
+    ipcRenderer.on(IpcChannels.CleanProgress, listener);
+    return () => {
+      ipcRenderer.removeListener(IpcChannels.CleanProgress, listener);
+    };
+  },
 
   revealInFinder: (target: string) =>
     ipcRenderer.invoke(IpcChannels.RevealInFinder, target) as Promise<void>,

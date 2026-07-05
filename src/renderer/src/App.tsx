@@ -11,6 +11,7 @@ import type {
 } from '@shared/types';
 import { OverviewList } from './components/OverviewList';
 import { CleanupList } from './components/CleanupList';
+import { CleanProgressDialog, type CleanProgressItem } from './components/CleanProgressDialog';
 import { ProjectDetailPanel } from './components/ProjectDetailPanel';
 import { HomeScreen } from './components/HomeScreen';
 import { ScanScreen } from './components/ScanScreen';
@@ -81,6 +82,11 @@ export function App() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [cleaning, setCleaning] = useState(false);
   const [lastResults, setLastResults] = useState<CleanResult[] | null>(null);
+  // 清理进度弹窗：实时展示逐个目录的删除状态，结束后在同一弹窗汇总结果
+  const [cleanProgressItems, setCleanProgressItems] = useState<CleanProgressItem[]>([]);
+  const [cleanProgressTotal, setCleanProgressTotal] = useState(0);
+  const [cleanProgressOpen, setCleanProgressOpen] = useState(false);
+  const [cleanDone, setCleanDone] = useState(false);
   // 当前结果页是否处于「清理详情」子视图：从确认框点击「查看列表」进入。
   // 该视图下主区渲染 CleanupList，底部带 ActionBar，项目集合固定为进入时的筛选范围。
   const [cleanupView, setCleanupView] = useState(false);
@@ -165,6 +171,34 @@ export function App() {
   // 订阅冷备包进度
   useEffect(() => {
     const off = window.devzen.onBundleProgress((p) => setBundleProgress(p));
+    return off;
+  }, []);
+
+  // 订阅清理进度：start 追加一条进行中，done 更新对应条目为最终结果
+  useEffect(() => {
+    const off = window.devzen.onCleanProgress((p) => {
+      setCleanProgressItems((prev) => {
+        if (p.phase === 'start') {
+          return [...prev, { path: p.path, name: p.name, done: false }];
+        }
+        // done：更新匹配 path 的最后一条进行中记录
+        const next = [...prev];
+        for (let i = next.length - 1; i >= 0; i--) {
+          if (next[i].path === p.path && !next[i].done) {
+            next[i] = {
+              path: p.path,
+              name: p.name,
+              done: true,
+              success: p.result?.success ?? false,
+              freedBytes: p.result?.freedBytes ?? 0,
+              error: p.result?.error
+            };
+            break;
+          }
+        }
+        return next;
+      });
+    });
     return off;
   }, []);
 
@@ -500,6 +534,11 @@ export function App() {
   const handleClean = useCallback(async () => {
     if (selected.size === 0) return;
     setCleaning(true);
+    // 重置并打开进度弹窗，直到用户点「完成」才关闭
+    setCleanProgressItems([]);
+    setCleanProgressTotal(selected.size);
+    setCleanDone(false);
+    setCleanProgressOpen(true);
     try {
       const projectRoots = projects.map((p) => p.path);
       const results = await window.devzen.cleanDirs(Array.from(selected), projectRoots);
@@ -518,8 +557,18 @@ export function App() {
     } finally {
       setCleaning(false);
       setConfirmOpen(false);
+      // 标记完成，弹窗切换为汇总视图
+      setCleanDone(true);
     }
   }, [selected, rootDir, projects]);
+
+  /** 进度弹窗「完成」：关闭并清空进度状态。 */
+  const handleCloseCleanProgress = useCallback(() => {
+    setCleanProgressOpen(false);
+    setCleanProgressItems([]);
+    setCleanProgressTotal(0);
+    setCleanDone(false);
+  }, []);
 
   // 首页点击"换个目录"：仅更新当前 rootDir，
   // 不动历史中其他路径的存档。
@@ -1003,6 +1052,16 @@ export function App() {
       )}
 
       <BundleProgressDialog progress={bundleProgress} phase={bundlePhase} t={t} />
+
+      {cleanProgressOpen && (
+        <CleanProgressDialog
+          items={cleanProgressItems}
+          total={cleanProgressTotal}
+          done={cleanDone}
+          t={t}
+          onClose={handleCloseCleanProgress}
+        />
+      )}
 
       {restoreBundleTarget && (
         <RestoreBundleDialog

@@ -77,6 +77,16 @@ const zh: Record<string, string> = {
   expandCollapse: '展开/收起',
   cleaning: '清理中…',
 
+  // --- 清理进度弹窗 ---
+  cleanProgressTitle: '正在清理…',
+  cleanDoneTitle: '清理完成',
+  cleanProgressCount: '已处理 {n}/{total}',
+  cleanItemDeleting: '删除中…',
+  cleanReportFreed: '共释放',
+  cleanReportSuccess: '成功',
+  cleanReportFailed: '失败',
+  done: '完成',
+
   // --- 确认弹窗 ---
   confirmTitle: '确认清理',
   confirmMsg: '以下目录将被永久删除，确认继续？',
@@ -392,6 +402,16 @@ const en: Record<string, string> = {
   selectAllProject: 'Select all cleanable dirs in this project',
   expandCollapse: 'Expand/Collapse',
   cleaning: 'Cleaning…',
+
+  // --- clean progress dialog ---
+  cleanProgressTitle: 'Cleaning…',
+  cleanDoneTitle: 'Cleanup Complete',
+  cleanProgressCount: 'Processed {n}/{total}',
+  cleanItemDeleting: 'Deleting…',
+  cleanReportFreed: 'Freed',
+  cleanReportSuccess: 'Succeeded',
+  cleanReportFailed: 'Failed',
+  done: 'Done',
 
   confirmTitle: 'Confirm Cleanup',
   confirmMsg: 'The following directories will be permanently deleted. Continue?',

@@ -5,6 +5,7 @@ export const IpcChannels = {
   ScanProjects: 'devzen:scanProjects',
   ScanProgress: 'devzen:scanProgress',
   CleanDirs: 'devzen:cleanDirs',
+  CleanProgress: 'devzen:cleanProgress',
   RevealInFinder: 'devzen:revealInFinder',
   CheckProjectDirty: 'devzen:checkProjectDirty',
   ArchiveProject: 'devzen:archiveProject',

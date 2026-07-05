@@ -33,7 +33,7 @@ import {
   getSettings,
   setBackupDir
 } from '../core/settings-store.js';
-import type { BundleProgress, HistoryEntry, ScanProgress } from '@shared/types';
+import type { BundleProgress, CleanProgress, HistoryEntry, ScanProgress } from '@shared/types';
 
 const execFileAsync = promisify(execFile);
 
@@ -76,8 +76,11 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(
     IpcChannels.CleanDirs,
-    async (_event, paths: string[], projectRoots: string[]) => {
-      return cleanDirectories(paths, projectRoots ?? []);
+    async (event, paths: string[], projectRoots: string[]) => {
+      const sender = event.sender;
+      return cleanDirectories(paths, projectRoots ?? [], (p: CleanProgress) => {
+        if (!sender.isDestroyed()) sender.send(IpcChannels.CleanProgress, p);
+      });
     }
   );
 

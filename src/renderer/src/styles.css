@@ -2845,6 +2845,80 @@ button.ghost-btn:hover:not(:disabled) {
   white-space: nowrap;
 }
 
+/* —— 清理进度弹窗 —— */
+.clean-progress-modal {
+  min-width: 480px;
+  max-width: 640px;
+}
+.clean-progress-count {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  margin: 8px 0;
+}
+.clean-progress-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  margin: 8px 0;
+}
+.clean-progress-summary .sep {
+  opacity: 0.4;
+}
+.clean-progress-summary .error {
+  color: var(--danger, #e5484d);
+}
+.clean-progress-list {
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid var(--border, rgba(128, 128, 128, 0.2));
+  border-radius: 6px;
+  padding: 4px;
+  margin: 8px 0 4px 0;
+  background: var(--bg-elev-2);
+}
+.clean-progress-item {
+  display: grid;
+  grid-template-columns: 20px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 6px;
+  font-size: 12px;
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+  border-radius: 4px;
+}
+.clean-progress-item + .clean-progress-item {
+  border-top: 1px solid var(--border, rgba(128, 128, 128, 0.12));
+}
+.clean-progress-status {
+  text-align: center;
+  font-weight: 600;
+}
+.clean-progress-item.is-running .clean-progress-status {
+  color: var(--muted, #888);
+}
+.clean-progress-item.is-ok .clean-progress-status {
+  color: var(--success, #30a46c);
+}
+.clean-progress-item.is-failed .clean-progress-status {
+  color: var(--danger, #e5484d);
+}
+.clean-progress-path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.clean-progress-info {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
+  white-space: nowrap;
+}
+.clean-progress-item.is-failed .clean-progress-info {
+  color: var(--danger, #e5484d);
+  opacity: 1;
+}
+
 /* —— 恢复 bundle 对话框 —— */
 .restore-bundle-modal {
   min-width: 460px;

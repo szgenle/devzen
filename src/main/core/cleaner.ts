@@ -1,6 +1,6 @@
 import { promises as fs, constants as fsConstants } from 'node:fs';
 import path from 'node:path';
-import type { CleanResult } from '@shared/types';
+import type { CleanResult, CleanProgress } from '@shared/types';
 import { CLEANABLE_DIR_NAMES } from './cleanable-names.js';
 
 const IS_WIN = process.platform === 'win32';
@@ -91,12 +91,19 @@ async function pathExists(p: string): Promise<boolean> {
  */
 export async function cleanDirectories(
   paths: string[],
-  projectRoots: string[]
+  projectRoots: string[],
+  onProgress?: (p: CleanProgress) => void
 ): Promise<CleanResult[]> {
   const roots = (projectRoots || []).filter((r) => typeof r === 'string' && path.isAbsolute(r));
   const results: CleanResult[] = [];
-  for (const p of paths) {
-    results.push(await cleanOne(p, roots));
+  const total = paths.length;
+  for (let i = 0; i < paths.length; i++) {
+    const p = paths[i];
+    const name = path.basename(p);
+    onProgress?.({ index: i + 1, total, path: p, name, phase: 'start' });
+    const result = await cleanOne(p, roots);
+    results.push(result);
+    onProgress?.({ index: i + 1, total, path: p, name, phase: 'done', result });
   }
   return results;
 }
