@@ -514,9 +514,7 @@ export function App() {
         setHistory(next);
       }
       setSelected(new Set());
-      // 清理完成后退出详情子视图，避免用户停留在项目列表已被调空的页面
-      setCleanupView(false);
-      setCleanupSnapshot(null);
+      // 清理完成后停留在当前界面，让用户查看结果
     } finally {
       setCleaning(false);
       setConfirmOpen(false);
