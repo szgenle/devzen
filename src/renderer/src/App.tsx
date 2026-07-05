@@ -443,13 +443,15 @@ export function App() {
 
   const selectedSize = useMemo(() => {
     let total = 0;
-    for (const p of visibleProjects) {
+    // 清理视图中以 cleanupSnapshot 为准，否则用 visibleProjects
+    const source = cleanupView && cleanupSnapshot ? cleanupSnapshot : visibleProjects;
+    for (const p of source) {
       for (const c of p.cleanables) {
         if (selected.has(c.path)) total += c.size;
       }
     }
     return total;
-  }, [visibleProjects, selected]);
+  }, [visibleProjects, selected, cleanupView, cleanupSnapshot]);
 
   /** 选中目录所属项目中，source === 'local' 的项目。
    *  这些项目没有远程备份，清理前需要在确认框里加强提醒。
@@ -551,6 +553,14 @@ export function App() {
         setScannedAt(ts);
         const next = await upsertHistoryEntry({ rootDir, projects: list, scannedAt: ts });
         setHistory(next);
+        // 同步刷新清理快照：用最新数据替换旧快照，已清理的目录大小会变为 0 或被移除
+        setCleanupSnapshot((prev) => {
+          if (!prev) return prev;
+          const prevPaths = new Set(prev.map((p) => p.path));
+          return list
+            .filter((p) => prevPaths.has(p.path))
+            .filter((p) => p.cleanables.length > 0);
+        });
       }
       setSelected(new Set());
       // 清理完成后停留在当前界面，让用户查看结果
