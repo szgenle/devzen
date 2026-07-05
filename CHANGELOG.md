@@ -4,6 +4,27 @@
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-07-05
+
+聚焦**清理体验升级**与**多平台项目识别增强**：新增清理进度实时反馈弹窗，优化清理完成后的界面停留与数据同步逻辑，并支持多平台项目中一级子目录生态的自动嗅探。
+
+### 新增
+
+- **清理进度实时反馈**：新增 `CleanProgressDialog` 弹窗组件，逐目录展示清理进度与结果状态，支持汇总统计
+  - `cleanDirectories` 新增 `onProgress` 回调，IPC 主进程转发清理进度事件给渲染进程
+  - 预加载脚本添加 `onCleanProgress` 事件订阅接口
+  - 国际化新增清理进度弹窗相关中英文文案
+- **多平台多子目录生态识别**：扫描器在根目录含 `.git` 但无生态 marker 时，自动向一级子目录嗅探生态（如 `android/`、`godot/` 子目录），扩展清理目录的识别范围
+
+### 修复
+
+- 清理完成后不再自动退出详情子视图，保持用户停留在当前界面查看清理结果
+
+### 变更
+
+- 清理视图数据同步逻辑优化：根据 `cleanupView` / `cleanupSnapshot` 优先选择数据源，清理完成后同步刷新快照、移除已完成项
+- 项目名交互优化：将项目名前的文件夹图标按钮替换为整体可点击的项目名文本，悬浮时显示主题色下划线，简化 DOM 结构
+
 ## [0.3.1] - 2026-05-30
 
 Windows 多盘场景下"扫得了却操作不了"的彻底修复版。围绕**清理 / 归档 / 冷备 / 恢复 / 打开**整条链路，统一了路径安全准入策略，去除了对用户家目录（`os.homedir()`）的硬编码假设。
@@ -111,6 +132,9 @@ Windows 多盘场景下"扫得了却操作不了"的彻底修复版。围绕**�
 - 仅删除白名单中的可重建构建产物（`node_modules` / `target` / `build` / `dist` / 等）
 - 渲染层弹窗二次确认每一次破坏性操作
 
-[Unreleased]: https://github.com/szgenle/devzen/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/szgenle/devzen/compare/v0.3.2...HEAD
+[0.3.2]: https://github.com/szgenle/devzen/releases/tag/v0.3.2
+[0.3.1]: https://github.com/szgenle/devzen/releases/tag/v0.3.1
+[0.3.0]: https://github.com/szgenle/devzen/releases/tag/v0.3.0
 [0.2.0]: https://github.com/szgenle/devzen/releases/tag/v0.2.0
 [0.1.0]: https://github.com/szgenle/devzen/releases/tag/v0.1.0
