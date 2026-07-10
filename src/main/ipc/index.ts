@@ -5,7 +5,7 @@ import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import { IpcChannels } from '@shared/ipc-channels.js';
 import { scanProjects, getProjectDetail, readGitDirty } from '../core/scanner.js';
-import { cleanDirectories } from '../core/cleaner.js';
+import { cleanDirectories, requestCleanCancel } from '../core/cleaner.js';
 import {
   archive as archiveProject,
   checkDirty,
@@ -83,6 +83,10 @@ export function registerIpcHandlers(): void {
       });
     }
   );
+
+  ipcMain.handle(IpcChannels.CleanCancel, () => {
+    requestCleanCancel();
+  });
 
   ipcMain.handle(IpcChannels.RevealInFinder, async (_event, target: string) => {
     shell.showItemInFolder(target);
@@ -255,6 +259,16 @@ export function registerIpcHandlers(): void {
     const url =
       'https://github.com/szgenle/devzen/blob/main/docs/%E4%BD%BF%E7%94%A8%E8%AF%B4%E6%98%8E.md';
     await shell.openExternal(url);
+  });
+
+  // ---------------- 系统权限引导 ----------------
+  // macOS 下直接跳转到「隐私与安全性 → 完全磁盘访问权限」面板，
+  // 比让用户自己翻菜单体验好很多。非 macOS 平台无对应面板，静默忽略。
+  ipcMain.handle(IpcChannels.OpenFullDiskAccess, async () => {
+    if (process.platform !== 'darwin') return;
+    await shell.openExternal(
+      'x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles'
+    );
   });
 }
 

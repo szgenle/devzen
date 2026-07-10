@@ -2869,6 +2869,41 @@ button.ghost-btn:hover:not(:disabled) {
 .clean-progress-summary .error {
   color: var(--danger, #e5484d);
 }
+.clean-progress-canceled {
+  font-size: 12px;
+  margin: 4px 0;
+}
+.clean-perm-banner {
+  margin: 8px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border, rgba(128, 128, 128, 0.2));
+  border-left: 3px solid var(--danger, #e5484d);
+  border-radius: 6px;
+  background: var(--bg-elev-2);
+}
+.clean-perm-title {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.clean-perm-hint {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+.clean-perm-btn {
+  background: var(--accent, #3b82f6);
+  border: 1px solid var(--accent, #3b82f6);
+  color: #fff;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.clean-perm-btn:hover {
+  opacity: 0.9;
+}
 .clean-progress-list {
   max-height: 320px;
   overflow-y: auto;

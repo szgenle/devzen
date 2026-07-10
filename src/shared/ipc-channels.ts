@@ -5,6 +5,7 @@ export const IpcChannels = {
   ScanProjects: 'devzen:scanProjects',
   ScanProgress: 'devzen:scanProgress',
   CleanDirs: 'devzen:cleanDirs',
+  CleanCancel: 'devzen:cleanCancel',
   CleanProgress: 'devzen:cleanProgress',
   RevealInFinder: 'devzen:revealInFinder',
   CheckProjectDirty: 'devzen:checkProjectDirty',
@@ -33,5 +34,7 @@ export const IpcChannels = {
   DeleteBundle: 'devzen:deleteBundle',
   BundleProgress: 'devzen:bundleProgress',
   /** 打开应用使用说明（GitHub 上的 docs/使用说明.md） */
-  OpenHelp: 'devzen:openHelp'
+  OpenHelp: 'devzen:openHelp',
+  /** 打开 macOS「完全磁盘访问权限」设置面板 */
+  OpenFullDiskAccess: 'devzen:openFullDiskAccess'
 } as const;

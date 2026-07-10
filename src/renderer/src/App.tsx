@@ -87,6 +87,9 @@ export function App() {
   const [cleanProgressTotal, setCleanProgressTotal] = useState(0);
   const [cleanProgressOpen, setCleanProgressOpen] = useState(false);
   const [cleanDone, setCleanDone] = useState(false);
+  // 取消清理：用户主动中断时置位。canceling 表示请求已发出但当前目录未删完。
+  const [cleanCanceling, setCleanCanceling] = useState(false);
+  const [cleanCanceled, setCleanCanceled] = useState(false);
   // 当前结果页是否处于「清理详情」子视图：从确认框点击「查看列表」进入。
   // 该视图下主区渲染 CleanupList，底部带 ActionBar，项目集合固定为进入时的筛选范围。
   const [cleanupView, setCleanupView] = useState(false);
@@ -191,7 +194,8 @@ export function App() {
               done: true,
               success: p.result?.success ?? false,
               freedBytes: p.result?.freedBytes ?? 0,
-              error: p.result?.error
+              error: p.result?.error,
+              errorCode: p.result?.errorCode
             };
             break;
           }
@@ -540,6 +544,8 @@ export function App() {
     setCleanProgressItems([]);
     setCleanProgressTotal(selected.size);
     setCleanDone(false);
+    setCleanCanceling(false);
+    setCleanCanceled(false);
     setCleanProgressOpen(true);
     try {
       const projectRoots = projects.map((p) => p.path);
@@ -578,6 +584,24 @@ export function App() {
     setCleanProgressItems([]);
     setCleanProgressTotal(0);
     setCleanDone(false);
+    setCleanCanceling(false);
+    setCleanCanceled(false);
+  }, []);
+
+  /** 请求取消清理：当前目录会先删完，后续目录不再处理。 */
+  const handleCancelClean = useCallback(async () => {
+    setCleanCanceling(true);
+    setCleanCanceled(true);
+    try {
+      await window.devzen.cancelClean();
+    } catch {
+      // 取消失败不阻断流程：最多是继续删完剩余目录
+    }
+  }, []);
+
+  /** 打开系统「完全磁盘访问权限」设置面板（仅 macOS）。 */
+  const handleOpenFullDiskAccess = useCallback(() => {
+    window.devzen.openFullDiskAccess().catch(() => undefined);
   }, []);
 
   // 首页点击"换个目录"：仅更新当前 rootDir，
@@ -1068,8 +1092,13 @@ export function App() {
           items={cleanProgressItems}
           total={cleanProgressTotal}
           done={cleanDone}
+          canceled={cleanCanceled}
+          canceling={cleanCanceling}
+          platform={window.devzen.platform}
           t={t}
           onClose={handleCloseCleanProgress}
+          onCancel={handleCancelClean}
+          onOpenFullDiskAccess={handleOpenFullDiskAccess}
         />
       )}
 

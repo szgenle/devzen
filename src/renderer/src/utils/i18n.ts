@@ -85,6 +85,14 @@ const zh: Record<string, string> = {
   cleanReportFreed: '共释放',
   cleanReportSuccess: '成功',
   cleanReportFailed: '失败',
+  cleanCancel: '取消清理',
+  cleanCanceling: '正在取消…',
+  cleanCanceledNote: '已取消，剩余目录未处理。',
+  cleanPermTitle: '部分目录因权限被系统拒绝',
+  cleanPermHintMac:
+    'macOS 出于隐私保护，限制了 App 访问这些目录。请在系统设置的「完全磁盘访问权限」中为 DevZen 打开开关后重试。',
+  cleanPermHintOther: '这些目录可能被其他程序占用或权限不足，关闭占用进程后重试。',
+  cleanPermOpenSettings: '去开启权限',
   done: '完成',
 
   // --- 确认弹窗 ---
@@ -411,6 +419,15 @@ const en: Record<string, string> = {
   cleanReportFreed: 'Freed',
   cleanReportSuccess: 'Succeeded',
   cleanReportFailed: 'Failed',
+  cleanCancel: 'Cancel',
+  cleanCanceling: 'Canceling…',
+  cleanCanceledNote: 'Canceled — remaining directories were not processed.',
+  cleanPermTitle: 'Some directories were blocked by system permissions',
+  cleanPermHintMac:
+    'macOS restricts app access to these directories for privacy. Grant DevZen access under "Full Disk Access" in System Settings, then retry.',
+  cleanPermHintOther:
+    'These directories may be locked by another process or lack permission. Close the process and retry.',
+  cleanPermOpenSettings: 'Open Settings',
   done: 'Done',
 
   confirmTitle: 'Confirm Cleanup',

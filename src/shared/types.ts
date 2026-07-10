@@ -105,6 +105,8 @@ export interface CleanResult {
   success: boolean;
   freedBytes: number;
   error?: string;
+  /** 失败时的底层错误码（如 EPERM / EACCES），供渲染层识别权限问题 */
+  errorCode?: string;
 }
 
 /** 清理进度事件：逐个目录上报，phase 区分开始处理与处理完成 */
@@ -293,6 +295,8 @@ export interface DevZenAPI {
   onScanProgress(cb: (p: ScanProgress) => void): () => void;
   /** 清理指定目录列表（projectRoots 为当前已扫描的项目根列表，用于安全准入校验） */
   cleanDirs(paths: string[], projectRoots: string[]): Promise<CleanResult[]>;
+  /** 请求取消正在进行的清理（当前目录会先删完，后续目录不再处理） */
+  cancelClean(): Promise<void>;
   /** 订阅清理进度（返回取消函数） */
   onCleanProgress(cb: (p: CleanProgress) => void): () => void;
   /** 在 Finder 中显示该路径 */
@@ -357,6 +361,12 @@ export interface DevZenAPI {
 
   /** 在系统默认浏览器打开使用说明（GitHub 上的 docs/使用说明.md） */
   openHelp(): Promise<void>;
+
+  /**
+   * 打开系统的「完全磁盘访问权限」设置面板（仅 macOS 有意义）。
+   * 用于清理因 TCC 权限被拒时，引导用户为 DevZen 授权。
+   */
+  openFullDiskAccess(): Promise<void>;
 }
 
 declare global {

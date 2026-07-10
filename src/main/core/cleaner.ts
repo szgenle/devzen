@@ -5,6 +5,18 @@ import { CLEANABLE_DIR_NAMES } from './cleanable-names.js';
 
 const IS_WIN = process.platform === 'win32';
 
+/**
+ * 清理取消标志。渲染层通过独立 IPC 通道置位；cleanDirectories 在处理
+ * 每个目录前检查它。正在删除的当前目录无法安全中途打断（会留下半删目录），
+ * 所以取消语义是「停在下一个目录之前」。
+ */
+let cancelRequested = false;
+
+/** 请求中断后续目录的清理。当前正在删除的目录会先完成。 */
+export function requestCleanCancel(): void {
+  cancelRequested = true;
+}
+
 /** Windows 路径不区分大小写；统一规范化用于父子路径比较 */
 function normalizeForCompare(p: string): string {
   const n = path.normalize(p);
@@ -97,7 +109,11 @@ export async function cleanDirectories(
   const roots = (projectRoots || []).filter((r) => typeof r === 'string' && path.isAbsolute(r));
   const results: CleanResult[] = [];
   const total = paths.length;
+  // 每次清理开始重置取消标志，避免上一轮的取消残留影响本轮
+  cancelRequested = false;
   for (let i = 0; i < paths.length; i++) {
+    // 在开始处理下一个目录前检查取消：已删除的保留结果，未处理的直接跳过
+    if (cancelRequested) break;
     const p = paths[i];
     const name = path.basename(p);
     onProgress?.({ index: i + 1, total, path: p, name, phase: 'start' });
@@ -193,17 +209,20 @@ async function cleanOne(target: string, projectRoots: string[]): Promise<CleanRe
     return { path: target, success: true, freedBytes: freed };
   }
 
-  // 目录仍存在：根据是否有残留文件区分"完全失败"和"部分清理"
+  // 目录仍存在：根据是否有残留文件区分「完全失败」和「部分清理」
   const errMsg = firstError
     ? firstError.message
     : remaining > 0
       ? '部分文件未能删除（可能被占用或权限不足）'
       : '目录未能删除';
+  // 透出错误 code（EPERM/EACCES 等），供渲染层识别权限问题并引导开启授权
+  const errorCode = (firstError as (Error & { code?: string }) | undefined)?.code;
   return {
     path: target,
     success: false,
     freedBytes: freed,
-    error: errMsg
+    error: errMsg,
+    errorCode
   };
 }
 

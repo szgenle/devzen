@@ -41,6 +41,8 @@ const api: DevZenAPI = {
   cleanDirs: (paths: string[], projectRoots: string[]) =>
     ipcRenderer.invoke(IpcChannels.CleanDirs, paths, projectRoots) as Promise<CleanResult[]>,
 
+  cancelClean: () => ipcRenderer.invoke(IpcChannels.CleanCancel) as Promise<void>,
+
   onCleanProgress: (cb: (p: CleanProgress) => void) => {
     const listener = (_e: unknown, payload: CleanProgress) => cb(payload);
     ipcRenderer.on(IpcChannels.CleanProgress, listener);
@@ -130,7 +132,10 @@ const api: DevZenAPI = {
     };
   },
 
-  openHelp: () => ipcRenderer.invoke(IpcChannels.OpenHelp) as Promise<void>
+  openHelp: () => ipcRenderer.invoke(IpcChannels.OpenHelp) as Promise<void>,
+
+  openFullDiskAccess: () =>
+    ipcRenderer.invoke(IpcChannels.OpenFullDiskAccess) as Promise<void>
 };
 
 contextBridge.exposeInMainWorld('devzen', api);
