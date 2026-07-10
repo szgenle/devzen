@@ -4,11 +4,17 @@
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-07-11
+
+聚焦**清理安全增强**与**Rust 生态支持**：清理过程支持中途取消、macOS 权限失败主动引导、`.asar` 假删除根因修复，并新增 Rust/Cargo 项目识别与跨生态子项目检测优化。
+
 ### 新增
 
 - **清理过程支持取消**：清理进度弹窗新增「取消」按钮，点击后立即中断后续目录的清理（当前正在删除的目录会先完成，避免半删状态），已完成的删除结果保留
 - **macOS 权限失败主动引导**：清理遇到 `EPERM` / `EACCES` 权限错误时，弹窗顶部显示引导横幅，macOS 上提供「去开启权限」按钮一键跳转系统「完全磁盘访问权限」设置面板
 - **macOS entitlements 配置**：新增 `build/entitlements.mac.plist`，签名后将允许应用访问用户家目录下的文件（未签名开发版仍需手动在系统设置中授权）
+- **Rust 生态支持**：扫描器新增 Rust/Cargo 项目识别，通过 `Cargo.toml` 读取项目描述信息，`target` 目录纳入可清理产物白名单
+- **跨生态子项目检测优化**：增强扫描器对多生态嵌套项目的识别和信息聚合能力，提升复杂项目结构下的扫描准确度
 
 ### 修复
 
@@ -145,7 +151,8 @@ Windows 多盘场景下"扫得了却操作不了"的彻底修复版。围绕**�
 - 仅删除白名单中的可重建构建产物（`node_modules` / `target` / `build` / `dist` / 等）
 - 渲染层弹窗二次确认每一次破坏性操作
 
-[Unreleased]: https://github.com/szgenle/devzen/compare/v0.3.2...HEAD
+[Unreleased]: https://github.com/szgenle/devzen/compare/v0.3.3...HEAD
+[0.3.3]: https://github.com/szgenle/devzen/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/szgenle/devzen/releases/tag/v0.3.2
 [0.3.1]: https://github.com/szgenle/devzen/releases/tag/v0.3.1
 [0.3.0]: https://github.com/szgenle/devzen/releases/tag/v0.3.0
