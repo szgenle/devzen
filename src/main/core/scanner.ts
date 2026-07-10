@@ -78,7 +78,23 @@ export async function scanProjects(
     // 优先判定当前目录是不是项目根
     const ecosystems = await detectEcosystems(dir, entries);
     if (ecosystems.length > 0) {
-      const project = await buildProjectInfo(dir, ecosystems, entries);
+      // 通用嵌套子项目收集：命中 marker 的项目根，若一级子目录含与父项目“不同”的生态
+      // （典型如 Tauri：根 package.json 命中 node，src-tauri/Cargo.toml 命中 rust），
+      // 则将该子目录的构建产物并入父项目，避免跨生态嵌套的产物被漏收。
+      // 同生态子目录（普通 monorepo 子包）不并入，保持“命中即停”的原有语义。
+      const subEcos = await detectSubdirEcosystems(dir, entries);
+      const crossEcos = subEcos
+        .map((s) => ({
+          subdir: s.subdir,
+          ecosystems: s.ecosystems.filter((e) => !ecosystems.includes(e))
+        }))
+        .filter((s) => s.ecosystems.length > 0);
+      const project = await buildProjectInfo(
+        dir,
+        ecosystems,
+        entries,
+        crossEcos.length > 0 ? crossEcos : undefined
+      );
       projects.push(project);
       onProgress?.({
         scannedDirs,
@@ -254,14 +270,24 @@ async function buildProjectInfo(
   entries: import('node:fs').Dirent[],
   subdirEcosystems?: SubdirEcosystem[]
 ): Promise<ProjectInfo> {
-  const cleanables = await collectCleanables(dir, ecosystems, subdirEcosystems);
+  // 使用可变副本；并将跨生态子目录（如 Tauri 的 src-tauri/rust）并入生态列表，
+  // 使 description 提取、编辑器推断等逻辑感知到子目录生态。
+  const ecos = [...ecosystems];
+  if (subdirEcosystems) {
+    for (const s of subdirEcosystems) {
+      for (const e of s.ecosystems) {
+        if (!ecos.includes(e)) ecos.push(e);
+      }
+    }
+  }
+  const cleanables = await collectCleanables(dir, ecos, subdirEcosystems);
   const cleanableSize = cleanables.reduce((s, c) => s + c.size, 0);
   const isGitRepo = entries.some((e) => e.name === '.git');
   const gitRemote = isGitRepo ? await readGitRemote(dir) : null;
   const allRemoteUrls = isGitRepo ? await readAllGitRemoteUrls(dir) : [];
   const gitDirty = isGitRepo ? await readGitDirty(dir) : null;
-  const lastModified = await readLastModified(dir, ecosystems);
-  const description = await extractDescription(dir, ecosystems, entries);
+  const lastModified = await readLastModified(dir, ecos);
+  const description = await extractDescription(dir, ecos, entries);
   const source = inferSource(allRemoteUrls);
   const remoteProviders = detectProviders(allRemoteUrls);
 
@@ -269,7 +295,7 @@ async function buildProjectInfo(
     path: dir,
     name: path.basename(dir),
     description,
-    ecosystems,
+    ecosystems: ecos,
     gitRemote,
     isGitRepo,
     source,
@@ -279,7 +305,7 @@ async function buildProjectInfo(
     cleanables,
     cleanableSize,
     duplicateGroup: null,
-    suggestedEditor: inferSuggestedEditor(entries, ecosystems)
+    suggestedEditor: inferSuggestedEditor(entries, ecos)
   };
 }
 
@@ -336,14 +362,14 @@ function inferSuggestedEditor(
   return undefined;
 }
 
-/** 探测项目下所有可清理目录及其大小 */
+/** 探测项目下所有可清理目录及其大小。 */
 async function collectCleanables(
   projectDir: string,
   ecosystems: EcosystemId[],
   subdirEcosystems?: SubdirEcosystem[]
 ): Promise<CleanableDir[]> {
   const seen = new Map<string, CleanableDir>(); // 以路径去重（多生态可能定义同名目录）
-  for (const eco of ecosystems) {
+  for (const eco of [...ecosystems]) { // 浅拷贝遍历，避免循环中数组被修改
     const spec = ECOSYSTEMS.find((s) => s.id === eco);
     if (!spec) continue;
     for (const def of spec.cleanableDirs) {
