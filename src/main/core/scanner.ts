@@ -320,6 +320,7 @@ function inferSuggestedEditor(
     if (ecosystems.includes('android')) return 'Android Studio';
     if (ecosystems.includes('go')) return 'GoLand';
     if (ecosystems.includes('python')) return 'PyCharm';
+    if (ecosystems.includes('rust')) return 'CLion';
     if (ecosystems.includes('java-maven') || ecosystems.includes('java-gradle'))
       return 'IntelliJ IDEA';
     if (ecosystems.includes('node')) return 'WebStorm';
@@ -595,6 +596,10 @@ async function extractDescription(
     const desc = await readPackageJsonDescription(path.join(dir, 'package.json'));
     if (desc) return desc;
   }
+  if (ecosystems.includes('rust')) {
+    const desc = await readCargoTomlDescription(path.join(dir, 'Cargo.toml'));
+    if (desc) return desc;
+  }
   // README 匹配不区分大小写，同时兼容 .md/.markdown/无后缀
   const readme = entries.find(
     (e) => e.isFile() && /^readme(\.(md|markdown|txt))?$/i.test(e.name)
@@ -612,6 +617,36 @@ async function readPackageJsonDescription(file: string): Promise<string | null> 
     const json = JSON.parse(raw) as { description?: unknown };
     if (typeof json.description === 'string' && json.description.trim()) {
       return json.description.trim().slice(0, 200);
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
+/**
+ * 从 Cargo.toml 的 [package] 段提取 description 字段。
+ * 使用正则轻量提取，避免引入 TOML 解析依赖。
+ * 支持双引号、单引号以及多行字符串（"""..."""）。
+ */
+async function readCargoTomlDescription(file: string): Promise<string | null> {
+  try {
+    const raw = await fs.readFile(file, 'utf8');
+    // 只取 [package] 段（遇到下一个 [xxx] 即停止）
+    const pkgMatch = raw.match(/\[package\]([\s\S]*?)(?=\n\[|$)/);
+    if (!pkgMatch) return null;
+    const block = pkgMatch[1];
+    // 多行字符串 description = """..."""
+    const mlMatch = block.match(/description\s*=\s*"""([\s\S]*?)"""/);
+    if (mlMatch) {
+      const val = mlMatch[1].trim();
+      if (val) return val.slice(0, 200);
+    }
+    // 普通字符串 description = "..." 或 '...'
+    const m = block.match(/description\s*=\s*"([^"]*)"|description\s*=\s*'([^']*)'/);
+    if (m) {
+      const val = (m[1] ?? m[2]).trim();
+      if (val) return val.slice(0, 200);
     }
   } catch {
     // ignore
