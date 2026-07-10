@@ -170,8 +170,10 @@ async function cleanOne(target: string, projectRoots: string[]): Promise<CleanRe
     await fs.rm(rmTarget, rmOpts);
   } catch (e) {
     firstError = e as Error;
-    // Windows 常见 EPERM/EACCES：先清只读位再重试
-    if (IS_WIN) {
+    // EPERM / EACCES：先递归清除只读位再重试
+    // macOS 打包 app 受沙箱限制尤为常见；Windows node_modules 也常含只读文件
+    const code = (e as Error & { code?: string }).code;
+    if (code === 'EPERM' || code === 'EACCES' || code === 'ENOTEMPTY') {
       try {
         await clearReadonlyRecursive(target);
         await fs.rm(rmTarget, rmOpts);
