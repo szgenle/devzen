@@ -1,4 +1,7 @@
-import { promises as fs } from 'node:fs';
+// 使用 original-fs 而非 node:fs：Electron 的 node:fs 是 asar-aware，会把 .asar 文件
+// 当作只读虚拟归档挂载（持有文件句柄、将其当目录递归），导致扫描时
+// 长期占用 dist 内 app.asar 句柄且尺寸统计不准。original-fs 把 .asar 当普通文件处理。
+import { promises as fs } from 'original-fs';
 import os from 'node:os';
 import path from 'node:path';
 import { exec } from 'node:child_process';

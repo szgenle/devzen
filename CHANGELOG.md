@@ -12,6 +12,9 @@
 
 ### 修复
 
+- **修复清理含 Electron 应用（`.asar`）的目录时删不干净的问题**：主进程文件系统操作从 asar-aware 的 `node:fs` 改为 Electron 的 `original-fs`。此前 `node:fs` 会把 `.asar` 文件当作只读虚拟归档，对其执行 `fs.rm(force:true)` 会「静默假成功」（返回成功但文件并未删除），导致清理 `dist` 等包含 `DevZen.app`/`app.asar` 的目录时残留、整体删除无法完成
+  - `cleaner.ts` / `scanner.ts` 统一改用 `original-fs`，并新增 `src/main/types/original-fs.d.ts` 类型声明、在 `electron.vite.config.ts` 中将 `original-fs` 标记为 external
+  - 顺带修复扫描时 `.asar` 被当归档挂载导致的文件句柄长期占用与目录尺寸统计不准
 - 修复 macOS 打包版清理 `node_modules` 等含只读文件的目录时静默失败的问题：权限重试逻辑从仅 Windows 生效改为基于错误码（`EPERM` / `EACCES` / `ENOTEMPTY`）跨平台触发
 
 ## [0.3.2] - 2026-07-05

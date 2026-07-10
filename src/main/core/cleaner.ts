@@ -1,4 +1,7 @@
-import { promises as fs, constants as fsConstants } from 'node:fs';
+// 必须使用 original-fs 而非 node:fs：Electron 的 node:fs 是 asar-aware 的，
+// 对 .asar 文件执行 fs.rm(force:true) 会静默假成功（不报错但也不删除），
+// 导致清理含 Electron 应用（如 DevZen.app）的目录时残留 app.asar。
+import { promises as fs, constants as fsConstants } from 'original-fs';
 import path from 'node:path';
 import type { CleanResult, CleanProgress } from '@shared/types';
 import { CLEANABLE_DIR_NAMES } from './cleanable-names.js';
