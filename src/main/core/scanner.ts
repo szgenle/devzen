@@ -391,9 +391,14 @@ async function collectCleanables(
       }
     }
   }
-  // Android：典型多模块结构，子模块 build/ 是最大头，额外递归收集一级子模块下的 build/ 与 .cxx/
-  if (ecosystems.includes('android')) {
-    await collectAndroidModuleArtifacts(projectDir, seen);
+  // Gradle（Android / java-gradle）：典型多模块结构，子模块 build/ 是最大头，
+  // 递归收集子模块产物（含 core/、feature/ 等分组目录下的深层模块）。
+  if (ecosystems.includes('android') || ecosystems.includes('java-gradle')) {
+    await collectGradleModuleArtifacts(
+      projectDir,
+      seen,
+      ecosystems.includes('android') ? 'android' : 'java-gradle'
+    );
   }
   // 子目录生态：生态标记位于一级子目录内（如 android/build.gradle），
   // 需要在对应子目录下收集可清理产物。
@@ -422,23 +427,42 @@ async function collectCleanables(
           }
         }
       }
-      // Android 子目录：递归收集其一级子模块下的 build/ 与 .cxx/
-      if (subEcos.includes('android')) {
-        await collectAndroidModuleArtifacts(subPath, seen);
+      // Gradle 子目录：递归收集其子模块下的构建产物
+      if (subEcos.includes('android') || subEcos.includes('java-gradle')) {
+        await collectGradleModuleArtifacts(
+          subPath,
+          seen,
+          subEcos.includes('android') ? 'android' : 'java-gradle'
+        );
       }
     }
   }
   return Array.from(seen.values()).sort((a, b) => b.size - a.size);
 }
 
-/** 收集 Android 一级子模块下的 build/ 与 .cxx/ 目录（仅当子目录包含 build.gradle* 时视为模块） */
-async function collectAndroidModuleArtifacts(
+/**
+ * 递归收集 Gradle 多模块项目子模块下的构建产物。
+ *
+ * 判定规则：
+ *  - 含 build.gradle* 的目录视为模块，收集其 build/（android 生态额外收集 .cxx/）
+ *  - 含 settings.gradle* 的目录视为嵌套 included build（如 build-logic），额外收集其 .gradle/
+ *  - 两者都没有的目录（如 core/、feature/ 等纯分组目录）继续下钻寻找深层模块
+ *
+ * 深度上限 3 层，覆盖典型的 core/ui、feature/settings 等分组结构；
+ * 跳过 src/、隐藏目录与 SKIP_DIRS，避免扫入源码树。
+ */
+async function collectGradleModuleArtifacts(
   projectDir: string,
-  seen: Map<string, CleanableDir>
+  seen: Map<string, CleanableDir>,
+  ecosystem: 'android' | 'java-gradle',
+  relPrefix = '',
+  depth = 0
 ): Promise<void> {
+  if (depth >= 3) return;
+  const baseDir = relPrefix ? path.join(projectDir, relPrefix) : projectDir;
   let entries: import('node:fs').Dirent[];
   try {
-    entries = await fs.readdir(projectDir, { withFileTypes: true });
+    entries = await fs.readdir(baseDir, { withFileTypes: true });
   } catch {
     return;
   }
@@ -446,7 +470,9 @@ async function collectAndroidModuleArtifacts(
     if (!e.isDirectory()) continue;
     if (e.name.startsWith('.')) continue;
     if (SKIP_DIRS.has(e.name)) continue;
-    const moduleDir = path.join(projectDir, e.name);
+    if (e.name === 'src') continue; // 源码树不会是模块根
+    const moduleDir = path.join(baseDir, e.name);
+    const rel = relPrefix ? `${relPrefix}/${e.name}` : e.name;
     let subFiles: import('node:fs').Dirent[];
     try {
       subFiles = await fs.readdir(moduleDir, { withFileTypes: true });
@@ -456,28 +482,47 @@ async function collectAndroidModuleArtifacts(
     const isModule = subFiles.some(
       (f) => f.isFile() && /^build\.gradle(\.kts)?$/.test(f.name)
     );
-    if (!isModule) continue;
-    for (const dirName of ['build', '.cxx'] as const) {
-      const target = path.join(moduleDir, dirName);
-      if (seen.has(target)) continue;
-      try {
-        const st = await fs.stat(target);
-        if (!st.isDirectory()) continue;
-        const size = await dirSize(target);
-        seen.set(target, {
-          path: target,
-          name: dirName,
-          size,
-          ecosystem: 'android',
+    const isNestedBuild = subFiles.some(
+      (f) => f.isFile() && /^settings\.gradle(\.kts)?$/.test(f.name)
+    );
+    if (isModule || isNestedBuild) {
+      const targets: Array<{ dirName: string; hint: string }> = [
+        {
+          dirName: 'build',
           hint:
-            dirName === '.cxx'
-              ? 'Android NDK 构建产物，可重建'
-              : 'Android 模块构建产物，gradle assemble 可重建'
-        });
-      } catch {
-        // 目录不存在
+            ecosystem === 'android'
+              ? 'Android 模块构建产物，gradle assemble 可重建'
+              : 'Gradle 模块构建产物，gradle build 可重建'
+        }
+      ];
+      if (ecosystem === 'android') {
+        targets.push({ dirName: '.cxx', hint: 'Android NDK 构建产物，可重建' });
+      }
+      if (isNestedBuild) {
+        targets.push({ dirName: '.gradle', hint: 'Gradle 项目缓存' });
+      }
+      for (const { dirName, hint } of targets) {
+        const target = path.join(moduleDir, dirName);
+        if (seen.has(target)) continue;
+        try {
+          const st = await fs.stat(target);
+          if (!st.isDirectory()) continue;
+          const size = await dirSize(target);
+          seen.set(target, {
+            path: target,
+            name: `${rel}/${dirName}`,
+            size,
+            ecosystem,
+            hint
+          });
+        } catch {
+          // 目录不存在
+        }
       }
     }
+    // 无论是否模块都继续下钻：分组目录（core/）与嵌套 included build（build-logic/）
+    // 内部都可能还有更深层模块
+    await collectGradleModuleArtifacts(projectDir, seen, ecosystem, rel, depth + 1);
   }
 }
 
