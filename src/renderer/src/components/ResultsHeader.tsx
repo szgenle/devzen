@@ -12,20 +12,20 @@ interface Props {
   cleanDisabled: boolean;
   /** 「清理」按钮 hover 提示，由父组件根据筛选状态生成 */
   cleanTitle: string;
-  /** 主操作按钮文案（默认 t.cleanBtn；清理详情视图下可被覆盖为「返回概览」） */
-  cleanLabel?: string;
-  /** 主操作按钮样式变体：primary为 accent 主色，default 为普通按钮 */
-  cleanVariant?: 'primary' | 'default';
   t: Messages;
   onViewModeChange: (mode: ViewMode) => void;
   onBackHome: () => void;
+  /** 清理详情视图下传入：在「← 首页」旁渲染「← 概览」，返回入口集中在左侧 */
+  onBackToOverview?: () => void;
   onRescan: () => void;
-  onClean: () => void;
+  /** 清理详情视图下不传：右侧不渲染「清理」按钮（清理入口在底部 ActionBar） */
+  onClean?: () => void;
 }
 
 /**
  * 结果页顶部 header：
- * 左侧"← 首页"返回入口 + 品牌；右侧视图切换 + 扫描路径 + 重新扫描 + 清理。
+ * 左侧"← 首页"返回入口 + 品牌（清理详情视图下追加"← 概览"，返回按钮集中在左侧）；
+ * 右侧视图切换 + 扫描路径 + 重新扫描 + 清理。
  * 「清理」按钮的作用范围由当前筛选结果决定（搜索 / 分类 / 标签等）。
  */
 export function ResultsHeader({
@@ -35,11 +35,10 @@ export function ResultsHeader({
   viewMode,
   cleanDisabled,
   cleanTitle,
-  cleanLabel,
-  cleanVariant = 'primary',
   t,
   onViewModeChange,
   onBackHome,
+  onBackToOverview,
   onRescan,
   onClean
 }: Props) {
@@ -54,6 +53,16 @@ export function ResultsHeader({
         >
           {t.backHome}
         </button>
+        {onBackToOverview && (
+          <button
+            className="ghost-btn back-btn"
+            onClick={onBackToOverview}
+            disabled={cleaning}
+            title={t.backToOverviewTitle}
+          >
+            {t.backToOverview}
+          </button>
+        )}
         <span className="brand">⌬ DevZen</span>
       </div>
       <div className="results-header-center" />
@@ -85,14 +94,16 @@ export function ResultsHeader({
         <button onClick={onRescan} disabled={cleaning} title={t.rescanTitle}>
           {t.rescanBtn}
         </button>
-        <button
-          className={cleanVariant === 'primary' ? 'clean-btn-primary' : ''}
-          onClick={onClean}
-          disabled={cleaning || cleanDisabled}
-          title={cleanTitle}
-        >
-          {cleaning ? t.cleaning : cleanLabel ?? t.cleanBtn}
-        </button>
+        {onClean && (
+          <button
+            className="clean-btn-primary"
+            onClick={onClean}
+            disabled={cleaning || cleanDisabled}
+            title={cleanTitle}
+          >
+            {cleaning ? t.cleaning : t.cleanBtn}
+          </button>
+        )}
       </div>
     </header>
   );

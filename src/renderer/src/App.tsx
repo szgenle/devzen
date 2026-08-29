@@ -920,23 +920,20 @@ export function App() {
             cleaning={cleaning}
             scannedAt={scannedAt}
             viewMode={viewMode}
-            cleanDisabled={cleanupView ? false : cleanScope.paths.length === 0}
+            cleanDisabled={cleanScope.paths.length === 0}
             cleanTitle={
-              cleanupView
-                ? t.backToOverview
-                : cleanScope.paths.length === 0
+              cleanScope.paths.length === 0
                 ? t.cleanBtnTitleEmpty
                 : filterActive
                 ? t.cleanBtnTitleFiltered
                 : t.cleanBtnTitleAll
             }
-            cleanLabel={cleanupView ? t.backToOverview : t.cleanBtn}
-            cleanVariant={cleanupView ? 'default' : 'primary'}
             t={t}
             onViewModeChange={handleViewModeChange}
             onBackHome={handleBackHome}
+            onBackToOverview={cleanupView ? handleBackToOverview : undefined}
             onRescan={handleScan}
-            onClean={cleanupView ? handleBackToOverview : handleCleanFromHeader}
+            onClean={cleanupView ? undefined : handleCleanFromHeader}
           />
 
           <main className="main">

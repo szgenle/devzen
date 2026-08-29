@@ -54,6 +54,8 @@ const zh: Record<string, string> = {
   cleanBtnTitleEmpty: '当前列表没有可清理的目录',
   backToHome: '返回首页',
   backHome: '← 首页',
+  backToOverview: '← 概览',
+  backToOverviewTitle: '返回概览列表',
   viewToggle: '切换视图',
   viewList: '列表视图',
   viewCard: '卡片视图',
@@ -105,7 +107,6 @@ const zh: Record<string, string> = {
   confirmSafeNote: '仅删除构建产物目录（node_modules、target、build 等），不会动你的源码。',
   confirmLocalWarn: '⚠ 以下项目没有远程备份',
   confirmLocalNote: '本次只会删除这些项目下的构建产物，不会删除项目本身。但请确认你知道自己在做什么。',
-  backToOverview: '← 概览',
 
   // --- 设置 ---
   settingsTitle: '首选项',
@@ -389,6 +390,8 @@ const en: Record<string, string> = {
   cleanBtnTitleEmpty: 'No cleanable dirs in current list',
   backToHome: 'Back to home',
   backHome: '← Home',
+  backToOverview: '← Overview',
+  backToOverviewTitle: 'Back to the overview list',
   viewToggle: 'Switch view',
   viewList: 'List view',
   viewCard: 'Card view',
@@ -439,7 +442,6 @@ const en: Record<string, string> = {
   confirmSafeNote: 'Only build artifact directories (node_modules, target, build, etc.) will be deleted. Source code is never touched.',
   confirmLocalWarn: '⚠ The following projects have no remote backup',
   confirmLocalNote: 'Only build artifacts under these projects will be removed, not the projects themselves. Please confirm you know what you are doing.',
-  backToOverview: '← Overview',
 
   settingsTitle: 'Preferences',
   settingsTheme: 'Theme',
